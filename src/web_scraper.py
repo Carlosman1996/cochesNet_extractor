@@ -11,54 +11,62 @@ from pyparsing import unicode
 
 from src.utils import JSONFileOperations
 from src.utils import FileOperations
+from src.utils import PrintColors
 from src.proxies_finder import ProxiesFinder
+from src.postman import Postman
 
 
 random.seed(datetime.now().timestamp())
-proxies_finder_obj = ProxiesFinder(max_size=20)
 ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))))
 
 
-PROXY_TRIES = 10
+proxies_finder_obj = ProxiesFinder(codes_filter=["US", "CA", "ES", "FR", "AL", "GB", "IT", "PO"],
+                                   anonymity_filter=[1, 2],
+                                   max_size=100,
+                                   # https_filter=True,
+                                   google_filter=True
+                                   )
+proxies_finder_obj.get_proxies()
+
+PROXY_TRIES = len(proxies_finder_obj.proxies_list)
 
 
-def utfy_dict(dic):
-    if isinstance(dic,unicode):
-        return(dic.encode("utf-8"))
-    elif isinstance(dic,dict):
-        for key in dic:
-            dic[key] = utfy_dict(dic[key])
-        return(dic)
-    elif isinstance(dic,list):
-        new_l = []
-        for e in dic:
-            new_l.append(utfy_dict(e))
-        return(new_l)
-    else:
-        return(dic)
+def send_request(url, headers):
+    iteration = 0
+    response_content = None
 
+    while iteration < PROXY_TRIES:
+        proxy = random.choice(proxies_finder_obj.proxies_list)
+        try:
+            response = Postman.get_request(
+                url=url,
+                headers=headers,
+                http_proxy=proxy,
+                timeout=20,
+                status_code_check=200
+            )
 
-def send_request(url, **kwargs):
-    proxies = {
-        "http": random.choice(proxies_finder_obj.get_proxies())
-    }
+            response.encoding = response.apparent_encoding
+            print('Response HTTP Status Code: ', response.status_code)
 
-    response = requests.get(
-        url=url,
-        proxies=proxies,
-        verify=False,
-        **kwargs
-    )
-    response.encoding = response.apparent_encoding
-    print('Response HTTP Status Code: ', response.status_code)
-    print('Response HTTP Response Body: ', response.text)
-    return response.text
+            if "Algo en tu navegador nos hizo pensar que eres un bot" in response.text or \
+                    "You don't have permission to access /vpns/ on this server." in response.text:
+                print(f"{PrintColors.FAIL.value}Response HTTP Response Body: KO - forbidden{PrintColors.ENDC.value}")
+                iteration += 1
+            else:
+                print(f"{PrintColors.OKGREEN.value}Response HTTP Response Body: OK{PrintColors.ENDC.value}")
+                response_content = response.text
+                break
+        except Exception as exception:
+            print(f"{PrintColors.FAIL.value}Response HTTP Response Body: KO - {str(exception)}{PrintColors.ENDC.value}")
+            iteration += 1
+    return response_content
 
 
 # TODO: CONVERT ENCODING TO UTF-8
 
 for page in range(0, 1):
-    url = 'https://www.coches.net/segunda-mano/?pg=' + str(page)
+    url = 'http://www.coches.net/segunda-mano/?pg=' + str(page)
     # url = 'https://www.coches.net/segunda-mano/?fi=Year&or=-1&pg=' + str(page)
 
     # Get URL
@@ -70,7 +78,7 @@ for page in range(0, 1):
     }
     response = send_request(url, headers=headers)
     FileOperations.write_file(ROOT_PATH + "/outputs/page_" + str(page) + ".html", response)
-    time.sleep(5)
+    # time.sleep(5)
 
     # PROCESS DATA:
     file = FileOperations.read_file(ROOT_PATH + "/outputs/page_" + str(page) + ".html")
@@ -86,8 +94,8 @@ for page in range(0, 1):
         if result_string.find("__INITIAL_PROPS__") != -1:
             json_data_str = result_string[len("window.__INITIAL_PROPS__ = JSON.parse(\""):-3].replace('\\"', '"').replace('\\\"', '"')
             json_data_str_decoded = json_data_str.encode(encoding='UTF-8', errors='strict')
-            json_data_str_decoded = utfy_dict(json_data_str_decoded)
+            # json_data_str_decoded = utfy_dict(json_data_str_decoded)
 
     json_object = json.loads(json_data_str_decoded)
     JSONFileOperations.write_file(ROOT_PATH + "/outputs/page_" + str(page) + ".json", json_object)
-    print(json_object)
+    # print(json_object)

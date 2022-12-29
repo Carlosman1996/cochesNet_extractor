@@ -6,6 +6,7 @@ import json
 import yaml
 import jsonschema
 from jsonschema import validate
+import enum
 
 
 __author__ = "Carlos Manuel Molina Sotoca"
@@ -13,6 +14,28 @@ __email__ = "cmmolinas01@gmail.com"
 
 
 ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))).parent)
+
+
+class PrintColors(enum.Enum):
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+class Logger:
+    @staticmethod
+    def print_pass(string):
+        print(f"{PrintColors.OKGREEN.value}{string}{PrintColors.ENDC.value}\n")
+
+    @staticmethod
+    def print_fail(string):
+        print(f"{PrintColors.FAIL.value}{string}{PrintColors.ENDC.value}\n")
 
 
 class DirectoryOperations:
