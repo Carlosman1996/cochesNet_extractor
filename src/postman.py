@@ -21,8 +21,6 @@ class Postman:
         else:
             proxies = None
 
-        print(proxies)
-
         response = requests.get(
             url=url,
             headers=headers,
@@ -31,7 +29,7 @@ class Postman:
         )
 
         if status_code_check is not None and response.status_code != status_code_check:
-            raise Exception(f"URL {url} is not available\n")
+            raise Exception(f"URL {url} is not available: {response.status_code}\n")
         return response
 
 

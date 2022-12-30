@@ -75,14 +75,18 @@ class FileOperations:
             raise Exception("File does not exist.")
 
     @staticmethod
-    def get_file_name(file_path):
-        return os.path.basename(file_path)
+    def get_file_name(file_path, extension=True):
+        if extension:
+            return os.path.basename(file_path)
+        else:
+            return os.path.basename(file_path).split('.')[0]
 
     @staticmethod
     def read_file(file_path):
         FileOperations.check_file_exists(file_path)
         with open(file_path, 'r', encoding="utf-8") as file_obj:
             file_content = file_obj.read()
+            file_obj.close()
         return file_content
 
     @staticmethod
@@ -90,6 +94,7 @@ class FileOperations:
         FileOperations.check_file_exists(file_path)
         with open(file_path, 'r', encoding="utf-8") as file_obj:
             file_content = file_obj.readlines()
+            file_obj.close()
         return file_content
 
     @staticmethod
@@ -97,12 +102,14 @@ class FileOperations:
         DirectoryOperations.create_dir_by_file_path(file_path)
         with open(file_path, 'w', encoding="utf-8") as file_obj:
             file_obj.write(string)
+            file_obj.close()
 
     @staticmethod
     def append_text_file(file_path, string):
         FileOperations.check_file_exists(file_path)
         with open(file_path, 'a', encoding="utf-8") as file_obj:
             file_obj.write(string)
+            file_obj.close()
 
 
 class JSONFileOperations:
@@ -117,6 +124,7 @@ class JSONFileOperations:
         DirectoryOperations.create_dir_by_file_path(file_path)
         with open(file_path, 'w', encoding="utf-8") as json_obj:
             json.dump(string, json_obj, indent=4)
+            json_obj.close()
 
     @staticmethod
     def validate_data_schema_dict(json_data, data_schema):
@@ -158,6 +166,7 @@ class YAMLFileOperations:
         DirectoryOperations.create_dir_by_file_path(file_path)
         with open(file_path, 'w', encoding="utf-8") as yaml_obj:
             yaml.dump(string, yaml_obj, default_flow_style=False)
+            yaml_obj.close()
 
 
 class TextConverter:
@@ -191,3 +200,4 @@ class PickleFileOperations:
         DirectoryOperations.create_dir_by_file_path(file_path)
         with open(file_path, 'wb') as pickle_obj:
             pickle.dump(proxies, pickle_obj)
+            pickle_obj.close()

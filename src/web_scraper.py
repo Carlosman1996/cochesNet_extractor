@@ -1,101 +1,152 @@
-from bs4 import BeautifulSoup as BS
 import time
-import json
-import requests
 from datetime import datetime
 import random
 import os
 from pathlib import Path
 
-from pyparsing import unicode
+import pandas as pd
 
-from src.utils import JSONFileOperations
+from src.logger import Logger
 from src.utils import FileOperations
 from src.utils import PrintColors
 from src.proxies_finder import ProxiesFinder
 from src.postman import Postman
+from src.cochesNet_page import CochesNetPage
 
 
 random.seed(datetime.now().timestamp())
 ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))))
 
 
-proxies_finder_obj = ProxiesFinder(codes_filter=["US", "CA", "ES", "FR", "AL", "GB", "IT", "PO"],
-                                   anonymity_filter=[1, 2],
-                                   max_size=100,
-                                   # https_filter=True,
-                                   google_filter=True
-                                   )
-proxies_finder_obj.get_proxies()
+class WebScraper:
+    def __init__(self,
+                 execution_time: int = 3600,    # 30 minutes
+                 start_page: int = None,
+                 end_page: int = None,
+                 logger_level="INFO"):
+        self._execution_time = execution_time
+        self.start_page = start_page
+        self.end_page = end_page
+        self.proxies = []
+        self._proxies_df = pd.DataFrame
+        self.outputs_folder = ROOT_PATH + "/outputs/" + str(int(datetime.now().timestamp()))
+        self._logger_level = logger_level
 
-PROXY_TRIES = len(proxies_finder_obj.proxies_list)
+        # Set logger:
+        self._logger = Logger(module=FileOperations.get_file_name(__file__, False),
+                              logs_file_path=self.outputs_folder,
+                              level=self._logger_level)
 
+    def _get_proxies(self):
+        self._logger.set_message(level="INFO",
+                                 message_level="SUBSECTION",
+                                 message="Read proxies")
 
-def send_request(url, headers):
-    iteration = 0
-    response_content = None
+        proxies_finder = ProxiesFinder(anonymity_filter=[1, 2])
+        proxies_finder.get_proxies()
+        self.proxies = proxies_finder.proxies_list
+        self._proxies_df = proxies_finder.proxies_df
 
-    while iteration < PROXY_TRIES:
-        proxy = random.choice(proxies_finder_obj.proxies_list)
-        try:
-            response = Postman.get_request(
-                url=url,
-                headers=headers,
-                http_proxy=proxy,
-                timeout=20,
-                status_code_check=200
-            )
+        self._logger.set_message(level="INFO",
+                                 message_level="MESSAGE",
+                                 message=f"Number of available proxies: {str(len(self.proxies))}")
 
-            response.encoding = response.apparent_encoding
-            print('Response HTTP Status Code: ', response.status_code)
+    def _get_page_content(self, page):
+        self._logger.set_message(level="INFO",
+                                 message_level="SUBSECTION",
+                                 message=f"Read page {page} content")
 
-            if "Algo en tu navegador nos hizo pensar que eres un bot" in response.text or \
-                    "You don't have permission to access /vpns/ on this server." in response.text:
-                print(f"{PrintColors.FAIL.value}Response HTTP Response Body: KO - forbidden{PrintColors.ENDC.value}")
+        proxy_retries = len(self.proxies)
+        response_content = None
+
+        iteration = 0
+        while iteration < proxy_retries:
+            # proxy = self.proxies[iteration]
+            proxy = random.choice(self.proxies)
+            try:
+                response = Postman.get_request(
+                    url=CochesNetPage.get_url_filter_most_recent(page),
+                    headers=CochesNetPage.get_headers(),
+                    http_proxy=proxy,
+                    timeout=20,
+                    status_code_check=200
+                )
+
+                response.encoding = response.apparent_encoding
+
+                if "Algo en tu navegador nos hizo pensar que eres un bot" in response.text:
+                    self._logger.set_message(level="DEBUG",
+                                             message_level="MESSAGE",
+                                             message=f"Response HTTP Response Body: KO - forbidden: BOT detection"
+                                                     f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
+                    iteration += 1
+                elif "You don't have permission to access /vpns/ on this server." in response.text:
+                    self._logger.set_message(level="DEBUG",
+                                             message_level="MESSAGE",
+                                             message="Response HTTP Response Body: KO - forbidden: LOCATION detection"
+                                                     f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
+                    iteration += 1
+                else:
+                    self._logger.set_message(level="INFO",
+                                             message_level="MESSAGE",
+                                             message=f"Response HTTP Response Body: OK"
+                                                     f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
+                    response_content = response.text
+                    break
+            except Exception as exception:
+                self._logger.set_message(level="DEBUG",
+                                         message_level="MESSAGE",
+                                         message=f"Response HTTP Response Body: KO - failed: {str(exception)}"
+                                                 f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
                 iteration += 1
-            else:
-                print(f"{PrintColors.OKGREEN.value}Response HTTP Response Body: OK{PrintColors.ENDC.value}")
-                response_content = response.text
+
+        # Remove not valid proxies:
+        return response_content
+
+    def run(self):
+        self._logger.set_message(level="INFO",
+                                 message_level="SECTION",
+                                 message="Start Web Scraper")
+
+        # Initialize proxies:
+        self._get_proxies()
+
+        current_page = self.start_page if self.start_page is not None else 0
+        start_time = time.time()
+
+        while True:
+            # Check execution time:
+            current_time = time.time()
+            elapsed_time = current_time - start_time
+
+            if elapsed_time > self._execution_time:
+                self._logger.set_message(level="INFO",
+                                         message_level="MESSAGE",
+                                         message=f"Finished iterating in: {str(int(elapsed_time))} seconds: "
+                                                 f"TIME ending")
                 break
-        except Exception as exception:
-            print(f"{PrintColors.FAIL.value}Response HTTP Response Body: KO - {str(exception)}{PrintColors.ENDC.value}")
-            iteration += 1
-    return response_content
+
+            # Check page finish:
+            if self.end_page is not None:
+                if current_page > self.end_page:
+                    self._logger.set_message(level="INFO",
+                                             message_level="MESSAGE",
+                                             message=f"Finished iterating in: {str(int(elapsed_time))} seconds: "
+                                                     f"PAGE ending")
+                    break
+
+            # Get url page content:
+            page_response = self._get_page_content(current_page)
+
+            if page_response is not None:
+                FileOperations.write_file(self.outputs_folder + f"/page_{str(current_page)}.html",
+                                          page_response)
+                current_page += 1
+            else:
+                time.sleep(120)     # 2 minutes
+                self._get_proxies()
 
 
-# TODO: CONVERT ENCODING TO UTF-8
-
-for page in range(0, 1):
-    url = 'http://www.coches.net/segunda-mano/?pg=' + str(page)
-    # url = 'https://www.coches.net/segunda-mano/?fi=Year&or=-1&pg=' + str(page)
-
-    # Get URL
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Referer': 'https://www.coches.net/segunda-mano/'
-    }
-    response = send_request(url, headers=headers)
-    FileOperations.write_file(ROOT_PATH + "/outputs/page_" + str(page) + ".html", response)
-    # time.sleep(5)
-
-    # PROCESS DATA:
-    file = FileOperations.read_file(ROOT_PATH + "/outputs/page_" + str(page) + ".html")
-    soup = BS(file, 'html.parser')
-
-    for announcement in soup.select('.mt-CardAd'):
-        results = [result.text for result in announcement.select('.mt-CardBasic-title')]
-
-    results = soup.find_all('script')
-    json_data_str_decoded = dict
-    for result in results:
-        result_string = result.text
-        if result_string.find("__INITIAL_PROPS__") != -1:
-            json_data_str = result_string[len("window.__INITIAL_PROPS__ = JSON.parse(\""):-3].replace('\\"', '"').replace('\\\"', '"')
-            json_data_str_decoded = json_data_str.encode(encoding='UTF-8', errors='strict')
-            # json_data_str_decoded = utfy_dict(json_data_str_decoded)
-
-    json_object = json.loads(json_data_str_decoded)
-    JSONFileOperations.write_file(ROOT_PATH + "/outputs/page_" + str(page) + ".json", json_object)
-    # print(json_object)
+if __name__ == "__main__":
+    web_scraper = WebScraper(execution_time=900, start_page=0, logger_level='DEBUG')
+    web_scraper.run()

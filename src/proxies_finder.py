@@ -7,6 +7,7 @@ import zoneinfo
 import warnings
 import enum
 from src.postman import Postman
+from src.cochesNet_page import CochesNetPage
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -18,9 +19,9 @@ pd.set_option('display.max_colwidth', None)
 
 
 class Anonymity(enum.Enum):
-    Elite = 1
-    Anonymous = 2
-    Transparent = 3
+    ELITE = 1
+    ANONYMOUS = 2
+    TRANSPARENT = 3
 
 
 class ProxiesFinder:
@@ -33,6 +34,8 @@ class ProxiesFinder:
                  max_size: int = None):
 
         self._base_url = "https://free-proxy-list.net/"
+        self._check_timeout = 3
+        self._check_url = CochesNetPage.get_url()
         self._proxy_table_indexes = {
             0: "IP_Address",
             1: "Port",
@@ -80,24 +83,23 @@ class ProxiesFinder:
 
         if type == "Anonymity":
             if value == "elite proxy":
-                return Anonymity.Elite.value
+                return Anonymity.ELITE.value
             elif value == "transparent":
-                return Anonymity.Transparent.value
+                return Anonymity.TRANSPARENT.value
             elif value == "anonymous":
-                return Anonymity.Anonymous.value
+                return Anonymity.ANONYMOUS.value
             else:
                 return None
 
         raise Exception(f"Unknown type conversion: {type}")
 
-    @staticmethod
-    def _check_proxy(proxy):
+    def _check_proxy(self, proxy):
         try:
-            Postman.get_request(url="http://www.google.com/",
+            Postman.get_request(url=self._check_url,
                                 http_proxy=proxy,
-                                timeout=10)
+                                timeout=self._check_timeout)
         except Exception as exception:
-            print(f"Proxy: {proxy} is not available: {str(exception)}\n")
+            # print(f"Proxy: {proxy} is not available: {str(exception)}\n")
             return False
         return True
 
@@ -150,7 +152,7 @@ class ProxiesFinder:
 
         if not proxies_df.empty:
             # Remove unavailable proxies:
-            proxies_df["available"] = proxies_df.apply(lambda proxy: self._check_proxy(proxy=proxy["proxy"]), axis=1)
+            proxies_df["available"] = proxies_df["proxy"].apply(lambda proxy: self._check_proxy(proxy=proxy))
 
             # Set proxies return variables:
             self.proxies_df = proxies_df[proxies_df["available"] == True].reset_index()
