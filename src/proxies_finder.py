@@ -155,7 +155,7 @@ class ProxiesFinder:
             proxies_df["available"] = proxies_df["proxy"].apply(lambda proxy: self._check_proxy(proxy=proxy))
 
             # Set proxies return variables:
-            self.proxies_df = proxies_df[proxies_df["available"] == True].reset_index()
+            self.proxies_df = proxies_df[proxies_df["available"] == True].reset_index(drop=True)
             self.proxies_list = self.proxies_df["proxy"].tolist()
 
         return self.proxies_list
