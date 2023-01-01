@@ -34,6 +34,7 @@ class WebScraper:
         self._proxies_df = pd.DataFrame
         self.outputs_folder = ROOT_PATH + "/outputs/" + str(int(datetime.now().timestamp()))
         self._logger_level = logger_level
+        self._proxies_wait_time = 60
 
         # Timing:
         self.start_time = time.time()
@@ -74,7 +75,7 @@ class WebScraper:
                                  message=f"Number of available proxies: {str(len(self.proxies))}")
 
     def _delete_proxies(self, proxy_indexes: list) -> None:
-        self._proxies_df.drop(proxy_indexes).reset_index(drop=True, inplace=True)
+        self._proxies_df = self._proxies_df.drop(index=proxy_indexes).reset_index(drop=True)
         self.proxies = self._proxies_df["proxy"].tolist()
 
     def _get_elapsed_time(self) -> float:
@@ -87,6 +88,7 @@ class WebScraper:
                           proxy_index,
                           status_code,
                           result):
+        # TODO:
         stats_model = self._stats_model.copy()
 
         stats_model["page"] = page
@@ -113,7 +115,8 @@ class WebScraper:
         proxy_retries = len(self.proxies)
         response_content = None
         remove_proxy_indexes = []
-        def _set_proxy_to_delete(proxy_value: str) -> None: remove_proxy_indexes.append(self.proxies.index(proxy_value))
+        def _get_proxy_index(proxy_value: str) -> int: return self.proxies.index(proxy_value)
+        def _set_proxy_to_delete(proxy_value: str) -> None: remove_proxy_indexes.append(_get_proxy_index(proxy_value))
 
         iteration = 0
         while iteration < proxy_retries:
@@ -135,7 +138,6 @@ class WebScraper:
                                              message_level="MESSAGE",
                                              message=f"Response HTTP Response Body: KO - forbidden: BOT detection"
                                                      f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
-                    time.sleep(60)  # 1 minute  # TODO: freeze proxy IP during certain time
                     iteration += 1
                 elif "You don't have permission to access /vpns/ on this server." in response.text:
                     self._logger.set_message(level="DEBUG",
@@ -149,6 +151,8 @@ class WebScraper:
                                              message_level="MESSAGE",
                                              message=f"Response HTTP Response Body: OK"
                                                      f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
+                    # time.sleep(30)    # TODO: freeze proxy IP during certain time - SLEEP
+                    _set_proxy_to_delete(proxy)     # TODO: freeze proxy IP during certain time - REMOVE to avoid BOT
                     response_content = response.text
                     break
             except Exception as exception:
@@ -199,13 +203,13 @@ class WebScraper:
                                           page_response)
                 current_page += 1
             else:
-                time.sleep(60)  # 1 minute
+                time.sleep(self._proxies_wait_time)
                 self._get_proxies()
 
         # Save stats results:
-        DataframeOperations.save_csv(self.outputs_folder + f"/log_results_stats.csv", self._stats_df)
+        # TODO: DataframeOperations.save_csv(self.outputs_folder + f"/log_results_stats.csv", self._stats_df)
 
 
 if __name__ == "__main__":
-    web_scraper = WebScraper(execution_time=900, start_page=0, logger_level='DEBUG')
+    web_scraper = WebScraper(execution_time=3600, start_page=0, logger_level='DEBUG')
     web_scraper.run()

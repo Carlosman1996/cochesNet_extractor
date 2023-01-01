@@ -66,6 +66,10 @@ class DirectoryOperations:
         DirectoryOperations.check_dir_exists(dir_path)
         return max(glob.glob(os.path.join(dir_path, '*/')), key=os.path.getmtime)
 
+    @staticmethod
+    def find_files_using_pattern(files_pattern):
+        return glob.glob(files_pattern)
+
 
 class FileOperations:
     @staticmethod

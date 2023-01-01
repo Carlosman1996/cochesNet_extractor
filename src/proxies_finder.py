@@ -35,7 +35,7 @@ class ProxiesFinder:
 
         self._base_url = "https://free-proxy-list.net/"
         self._check_timeout = 3
-        self._check_url = CochesNetPage.get_url()
+        self._check_url = "https://www.google.com/"
         self._proxy_table_indexes = {
             0: "IP_Address",
             1: "Port",
