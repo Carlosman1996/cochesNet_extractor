@@ -40,13 +40,7 @@ class DataExtractor:
                                  message="Start Data Extractor")
 
         # Read HTMLs:
-        html_paths = DirectoryOperations.find_files_using_pattern(self.inputs_folder + "/page_*.html")
-
-        # Extract cars JSON from each HTML:
-        for html_path in html_paths:
-            html_file = FileOperations.read_file(html_path)
-            json_file = self._cochesNet_page.get_cars_dict(html_file)
-            assert 0
+        json_paths = DirectoryOperations.find_files_using_pattern(self.inputs_folder + "/page_*.json")
 
 
 if __name__ == "__main__":

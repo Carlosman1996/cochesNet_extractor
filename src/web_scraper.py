@@ -1,19 +1,22 @@
+import json
 import time
 from datetime import datetime
 import zoneinfo
 import random
 import os
 from pathlib import Path
+from abc import ABC, abstractmethod
 
 import pandas as pd
 
 from src.logger import Logger
 from src.utils import FileOperations
-from src.utils import PrintColors
 from src.utils import DataframeOperations
+from src.utils import JSONFileOperations
 from src.proxies_finder import ProxiesFinder
 from src.postman import Postman
 from src.cochesNet_page import CochesNetPage
+from src.cochesNet_api import CochesNetAPI
 
 TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 
@@ -21,7 +24,7 @@ random.seed(datetime.now().timestamp())
 ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))))
 
 
-class WebScraper:
+class WebScraperCore:
     def __init__(self,
                  execution_time: int = 3600,  # 30 minutes
                  start_page: int = None,
@@ -112,34 +115,30 @@ class WebScraper:
                                  message_level="SUBSECTION",
                                  message=f"Read page {page} content")
 
-        proxy_retries = len(self.proxies)
+        number_proxies = len(self.proxies)
+        self._logger.set_message(level="INFO",
+                                 message_level="MESSAGE",
+                                 message=f"Available proxies: {number_proxies}")
+
         response_content = None
         remove_proxy_indexes = []
         def _get_proxy_index(proxy_value: str) -> int: return self.proxies.index(proxy_value)
         def _set_proxy_to_delete(proxy_value: str) -> None: remove_proxy_indexes.append(_get_proxy_index(proxy_value))
 
         iteration = 0
-        while iteration < proxy_retries:
+        while iteration <= number_proxies:
             # proxy = self.proxies[iteration]
             proxy = random.choice(self.proxies)
             try:
-                response = Postman.get_request(
-                    url=CochesNetPage.get_url_filter_most_recent(page),
-                    headers=CochesNetPage.get_headers(),
-                    http_proxy=proxy,
-                    timeout=20,
-                    status_code_check=200
-                )
+                response_content = self._send_request(page=page, proxy=proxy)
 
-                response.encoding = response.apparent_encoding
-
-                if "Algo en tu navegador nos hizo pensar que eres un bot" in response.text:
+                if "Algo en tu navegador nos hizo pensar que eres un bot" in response_content:
                     self._logger.set_message(level="DEBUG",
                                              message_level="MESSAGE",
                                              message=f"Response HTTP Response Body: KO - forbidden: BOT detection"
                                                      f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
                     iteration += 1
-                elif "You don't have permission to access /vpns/ on this server." in response.text:
+                elif "You don't have permission to access /vpns/ on this server." in response_content:
                     self._logger.set_message(level="DEBUG",
                                              message_level="MESSAGE",
                                              message="Response HTTP Response Body: KO - forbidden: LOCATION detection"
@@ -152,8 +151,7 @@ class WebScraper:
                                              message=f"Response HTTP Response Body: OK"
                                                      f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
                     # time.sleep(30)    # TODO: freeze proxy IP during certain time - SLEEP
-                    _set_proxy_to_delete(proxy)     # TODO: freeze proxy IP during certain time - REMOVE to avoid BOT
-                    response_content = response.text
+                    # _set_proxy_to_delete(proxy)     # TODO: freeze proxy IP during certain time - REMOVE to avoid BOT
                     break
             except Exception as exception:
                 self._logger.set_message(level="DEBUG",
@@ -199,8 +197,8 @@ class WebScraper:
             page_response = self._get_page_content(current_page)
 
             if page_response is not None:
-                FileOperations.write_file(self.outputs_folder + f"/page_{str(current_page)}.html",
-                                          page_response)
+                # Convert and save results:
+                self._save_results(page=current_page, result=page_response)
                 current_page += 1
             else:
                 time.sleep(self._proxies_wait_time)
@@ -209,7 +207,80 @@ class WebScraper:
         # Save stats results:
         # TODO: DataframeOperations.save_csv(self.outputs_folder + f"/log_results_stats.csv", self._stats_df)
 
+    @abstractmethod
+    def _send_request(self, page: int, proxy: str):
+        return str("")
+
+    @abstractmethod
+    def _save_results(self, page: int, result: str) -> None:
+        return None
+
+
+class WebScraperV1(WebScraperCore):
+    def __init__(self,
+                 execution_time: int = 3600,
+                 start_page: int = None,
+                 end_page: int = None,
+                 logger_level="INFO"):
+
+        super().__init__(execution_time=execution_time,
+                         start_page=start_page,
+                         end_page=end_page,
+                         logger_level=logger_level)
+
+        self._cochesNet_page = CochesNetPage()
+
+    def _send_request(self, page: int, proxy: str):
+        response = Postman.send_request(
+            method='POST',
+            url=self._cochesNet_page.get_url_filter_most_recent(page),
+            headers=self._cochesNet_page.get_headers(),
+            http_proxy=proxy,
+            timeout=20,
+            status_code_check=200
+        )
+        return response.text
+
+    def _save_results(self, page: int, result: str) -> None:
+        FileOperations.write_file(self.outputs_folder + f"/page_{str(page)}.html",
+                                  result)
+        json_result = self._cochesNet_page.get_cars_dict_using_html(result)
+        JSONFileOperations.write_file(self.outputs_folder + f"/page_{str(page)}.json",
+                                      json_result)
+
+
+class WebScraperV2(WebScraperCore):
+    def __init__(self,
+                 execution_time: int = 3600,
+                 start_page: int = None,
+                 end_page: int = None,
+                 logger_level="INFO"):
+
+        super().__init__(execution_time=execution_time,
+                         start_page=start_page,
+                         end_page=end_page,
+                         logger_level=logger_level)
+
+        self._cochesNet_api = CochesNetAPI()
+
+    def _send_request(self, page: int, proxy: str):
+        request_params = self._cochesNet_api.get_request_cars_by_relevance(page=page + 1)
+        response = Postman.send_request(
+            method=request_params["method"],
+            url=request_params["url"],
+            headers=request_params["headers"],
+            json=request_params["json"],
+            http_proxy=proxy,
+            timeout=20,
+            status_code_check=200
+        )
+        return json.loads(response.text)
+
+    def _save_results(self, page: int, result: str) -> None:
+        JSONFileOperations.write_file(self.outputs_folder + f"/page_{str(page)}.json",
+                                      result)
+
 
 if __name__ == "__main__":
-    web_scraper = WebScraper(execution_time=3600, start_page=0, logger_level='DEBUG')
+    web_scraper = WebScraperV2(execution_time=3600, start_page=0, logger_level='DEBUG')
     web_scraper.run()

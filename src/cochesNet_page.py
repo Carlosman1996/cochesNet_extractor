@@ -1,5 +1,5 @@
 import json
-import unicodedata
+import ast
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
 
@@ -33,7 +33,7 @@ class CochesNetPage(CochesNetPageData):
     def __init__(self):
         pass
 
-    def get_cars_dict(self, html_file: str) -> dict:
+    def get_cars_dict_using_html(self, html_file: str) -> dict:
         cars_dict = {}
 
         html_data = BeautifulSoup(html_file, 'html.parser')
@@ -41,12 +41,7 @@ class CochesNetPage(CochesNetPageData):
         for script in scripts:
             script_string = script.text
             if script_string.find(self.cars_json_identification) != -1:
-                cars_dict_unformatted = script_string[len(self.cars_json_identification):-3].replace('\\\\', '\\').replace('\\"', '"')
-                cars_dict = json.dumps(cars_dict_unformatted, ensure_ascii=False).encode("utf-8")
-                print(cars_dict)
-                from src.utils import JSONFileOperations
-                JSONFileOperations.pretty_print_dict(cars_dict)
-
-                assert 0
-
+                cars_dict_unformatted = script_string[len(self.cars_json_identification):-3]\
+                    .replace('\\\\', '\\').replace('\\"', '"')
+                cars_dict = json.loads(cars_dict_unformatted)
         return cars_dict

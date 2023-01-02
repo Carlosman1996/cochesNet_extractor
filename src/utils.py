@@ -155,8 +155,8 @@ class JSONFileOperations:
 
     @staticmethod
     def pretty_print_dict(dictionary):
-        parsed = json.loads(json.dumps(dictionary))
-        print(json.dumps(parsed, indent=4, sort_keys=True))
+        parsed = json.loads(json.dumps(dictionary, ensure_ascii=False).encode('utf8'))
+        print(json.dumps(parsed, indent=4, sort_keys=True, ensure_ascii=False))
 
 
 class YAMLFileOperations:

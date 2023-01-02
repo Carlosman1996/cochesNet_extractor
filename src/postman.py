@@ -6,12 +6,14 @@ class Postman:
         pass
 
     @staticmethod
-    def get_request(url,
-                    headers: dict = None,
-                    timeout: int = 20,
-                    http_proxy: str = None,
-                    https_proxy: str = None,
-                    status_code_check: int = None):
+    def send_request(method: str,
+                     url: str,
+                     headers: dict = None,
+                     json: dict = None,
+                     timeout: int = 20,
+                     http_proxy: str = None,
+                     https_proxy: str = None,
+                     status_code_check: int = None):
 
         if http_proxy is not None or https_proxy is not None:
             proxies = {
@@ -21,8 +23,10 @@ class Postman:
         else:
             proxies = None
 
-        response = requests.get(
+        response = requests.request(
+            method=method,
             url=url,
+            json=json,
             headers=headers,
             proxies=proxies,
             timeout=timeout
@@ -35,4 +39,4 @@ class Postman:
 
 if __name__ == "__main__":
     postman_obj = Postman()
-    postman_obj.get_request("https://free-proxy-list.net/")
+    print(postman_obj.send_request("GET", "https://free-proxy-list.net/"))

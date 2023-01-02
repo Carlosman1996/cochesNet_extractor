@@ -31,11 +31,12 @@ class ProxiesFinder:
                  anonymity_filter: list = None,
                  https_filter: bool = None,
                  google_filter: bool = None,
-                 max_size: int = None):
+                 max_size: int = None,
+                 check_proxies: bool = True):
 
         self._base_url = "https://free-proxy-list.net/"
         self._check_timeout = 3
-        self._check_url = "https://www.google.com/"
+        self._check_url = "https://www.coches.net/"
         self._proxy_table_indexes = {
             0: "IP_Address",
             1: "Port",
@@ -70,6 +71,7 @@ class ProxiesFinder:
         self.https_filter = https_filter
         self.google_filter = google_filter
         self.max_size = max_size
+        self.check_proxies = check_proxies
 
     @staticmethod
     def _type_converter(value, type):
@@ -95,9 +97,10 @@ class ProxiesFinder:
 
     def _check_proxy(self, proxy):
         try:
-            Postman.get_request(url=self._check_url,
-                                http_proxy=proxy,
-                                timeout=self._check_timeout)
+            Postman.send_request(method="GET",
+                                 url=self._check_url,
+                                 http_proxy=proxy,
+                                 timeout=self._check_timeout)
         except Exception as exception:
             # print(f"Proxy: {proxy} is not available: {str(exception)}\n")
             return False
@@ -108,8 +111,9 @@ class ProxiesFinder:
         proxies_df = self.proxies_df.copy()
 
         # Get Free Proxy HTML:
-        response = Postman.get_request(url=self._base_url,
-                                       status_code_check=200)
+        response = Postman.send_request(method='GET',
+                                        url=self._base_url,
+                                        status_code_check=200)
         html_doc = BeautifulSoup(response.content, 'html.parser')
 
         # Iterate over proxies table:
@@ -152,7 +156,8 @@ class ProxiesFinder:
 
         if not proxies_df.empty:
             # Remove unavailable proxies:
-            proxies_df["available"] = proxies_df["proxy"].apply(lambda proxy: self._check_proxy(proxy=proxy))
+            proxies_df["available"] = \
+                proxies_df["proxy"].apply(lambda proxy: self._check_proxy(proxy=proxy) if self.check_proxies else True)
 
             # Set proxies return variables:
             self.proxies_df = proxies_df[proxies_df["available"] == True].reset_index(drop=True)
