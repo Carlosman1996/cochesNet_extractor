@@ -248,6 +248,10 @@ class DataframeOperations:
                        if_exists='append',
                        index=False)
 
+    @staticmethod
+    def select_sql(conn, query):
+        return pd.read_sql(query, conn)
+
 
 class DatabaseOperations:
 

@@ -59,6 +59,10 @@ class Queries:
         );
     """
 
+    read_statisticars_main_table_query = """
+        SELECT * FROM ANNOUNCEMENTS
+    """
+
     @staticmethod
     def create_statisticars_insert_row_query(data):
         return f"""
@@ -138,6 +142,17 @@ class Repository(Queries):
             DataframeOperations.insert_sql(conn, table, data_df)
         else:
             print("Error! Cannot create the database connection.")
+
+    @staticmethod
+    def read_all_to_df():
+        # Create a database connection
+        conn = DatabaseOperations.create_connection(Queries.bbdd_path)
+
+        if conn is not None:
+            return DataframeOperations.select_sql(conn, Queries.read_statisticars_main_table_query)
+        else:
+            print("Error! Cannot create the database connection.")
+            return None
 
 
 if __name__ == '__main__':
