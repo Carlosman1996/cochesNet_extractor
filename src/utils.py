@@ -8,11 +8,11 @@ import jsonschema
 from jsonschema import validate
 import enum
 import pandas as pd
-
+import sqlite3
+from sqlite3 import Error
 
 __author__ = "Carlos Manuel Molina Sotoca"
 __email__ = "cmmolinas01@gmail.com"
-
 
 ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))).parent)
 
@@ -240,3 +240,37 @@ class DataframeOperations:
             if type(item) == str:
                 processed_column[key] = json.loads(item)
         return processed_column
+
+    @staticmethod
+    def insert_sql(conn, table_name, data_df):
+        data_df.to_sql(table_name,
+                       conn,
+                       if_exists='append',
+                       index=False)
+
+
+class DatabaseOperations:
+
+    @staticmethod
+    def create_connection(db_file):
+        """ create a database connection to the SQLite database
+            specified by db_file
+        :param db_file: database file
+        :return: Connection object or None
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(db_file)
+            return conn
+        except Error as e:
+            print(e)
+
+        return conn
+
+    @staticmethod
+    def execute_query(conn, query):
+        try:
+            c = conn.cursor()
+            c.execute(query)
+        except Error as e:
+            print(e)

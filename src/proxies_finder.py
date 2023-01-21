@@ -7,7 +7,6 @@ import zoneinfo
 import warnings
 import enum
 from src.postman import Postman
-from src.cochesNet_page import CochesNetPage
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
