@@ -72,7 +72,7 @@ class WebScraper:
                                  message_level="SUBSECTION",
                                  message="Read proxies")
 
-        proxies_finder = ProxiesFinder(anonymity_filter=[1, 2], max_size=20)
+        proxies_finder = ProxiesFinder(anonymity_filter=[1, 2])
         proxies_finder.get_proxies()
         self.proxies = proxies_finder.proxies_list
         self._proxies_df = proxies_finder.proxies_df
@@ -126,7 +126,7 @@ class WebScraper:
         def _set_proxy_to_delete(proxy_value: str) -> None: remove_proxy_indexes.append(_get_proxy_index(proxy_value))
 
         iteration = 0
-        while iteration <= number_proxies:
+        while iteration < number_proxies:
             # proxy = self.proxies[iteration]
             proxy = random.choice(self.proxies)
             try:
@@ -247,7 +247,7 @@ class WebScraper:
                                       result)
 
     def _save_detail_results(self, page: int, detail: int, result) -> None:
-        JSONFileOperations.write_file(self.outputs_folder + f"page_{str(page)}/detail_{str(detail)}.json",
+        JSONFileOperations.write_file(self.outputs_folder + f"/page_{str(page)}/detail_{str(detail)}.json",
                                       result)
 
 

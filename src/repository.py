@@ -121,6 +121,15 @@ class Repository(Queries):
             DatabaseOperations.execute_query(conn, Queries.statisticars_main_table_query)
         else:
             print("Error! Cannot create the database connection.")
+    @staticmethod
+    def create_vehicles_table():
+        # Create a database connection
+        conn = DatabaseOperations.create_connection(Queries.bbdd_path)
+
+        if conn is not None:
+            DatabaseOperations.execute_query(conn, Queries.statisticars_main_table_query)
+        else:
+            print("Error! Cannot create the database connection.")
 
     @staticmethod
     def insert_row(row):
