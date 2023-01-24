@@ -24,7 +24,7 @@ random.seed(datetime.now().timestamp())
 ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))))
 
 
-class WebScraperCore:
+class WebScraper:
     def __init__(self,
                  execution_time: int = 3600,  # 30 minutes
                  start_page: int = None,
@@ -38,6 +38,10 @@ class WebScraperCore:
         self.outputs_folder = ROOT_PATH + "/outputs/" + str(int(datetime.now().timestamp()))
         self._logger_level = logger_level
         self._proxies_wait_time = 60
+        self._scrapping_wait_time = 0.5
+
+        # Set web to scrap:
+        self._page_api = CochesNetAPI()
 
         # Timing:
         self.start_time = time.time()
@@ -68,7 +72,7 @@ class WebScraperCore:
                                  message_level="SUBSECTION",
                                  message="Read proxies")
 
-        proxies_finder = ProxiesFinder(anonymity_filter=[1, 2])
+        proxies_finder = ProxiesFinder(anonymity_filter=[1, 2], max_size=20)
         proxies_finder.get_proxies()
         self.proxies = proxies_finder.proxies_list
         self._proxies_df = proxies_finder.proxies_df
@@ -110,11 +114,7 @@ class WebScraperCore:
         _stats_df = pd.DataFrame([stats_model])
         self._stats_df = pd.concat([self._stats_df, _stats_df], ignore_index=True)
 
-    def _get_page_content(self, page: int):
-        self._logger.set_message(level="INFO",
-                                 message_level="SUBSECTION",
-                                 message=f"Read page {page} content")
-
+    def _get_url_content(self, request_params: dict):
         number_proxies = len(self.proxies)
         self._logger.set_message(level="INFO",
                                  message_level="MESSAGE",
@@ -130,7 +130,8 @@ class WebScraperCore:
             # proxy = self.proxies[iteration]
             proxy = random.choice(self.proxies)
             try:
-                response_content = self._send_request(page=page, proxy=proxy)
+                time.sleep(self._scrapping_wait_time)
+                response_content = self._send_request(request_params=request_params, proxy=proxy)
 
                 if "Algo en tu navegador nos hizo pensar que eres un bot" in response_content:
                     self._logger.set_message(level="DEBUG",
@@ -184,6 +185,30 @@ class WebScraperCore:
                                                  f"TIME ending")
                 break
 
+            # Get url page content:
+            self._logger.set_message(level="INFO",
+                                     message_level="SUBSECTION",
+                                     message=f"Read page {current_page} content")
+            request_params = self._page_api.get_request_search_by_date_desc(page=current_page)
+            search_response = self._get_url_content(request_params=request_params)
+
+            if search_response is not None:
+                # Convert and save results:
+                self._save_page_results(page=current_page, result=search_response)
+                current_page += 1
+
+                # Read information per announcement:
+                for number, announcement in enumerate(self._page_api.get_announcements(search_response)):
+                    self._logger.set_message(level="INFO",
+                                             message_level="SUBSECTION",
+                                             message=f"Read announcement detail {number}")
+                    request_params = self._page_api.get_request_announcement(announcement=announcement)
+                    detail_response = self._get_url_content(request_params=request_params)
+                    self._save_detail_results(page=current_page, detail=number, result=detail_response)
+            else:
+                time.sleep(self._proxies_wait_time)
+                self._get_proxies()
+
             # Check page finish:
             if self.end_page is not None:
                 if current_page > self.end_page:
@@ -192,95 +217,40 @@ class WebScraperCore:
                                              message=f"Finished iterating in: {str(int(elapsed_time))} seconds: "
                                                      f"PAGE ending")
                     break
-
-            # Get url page content:
-            page_response = self._get_page_content(current_page)
-
-            if page_response is not None:
-                # Convert and save results:
-                self._save_results(page=current_page, result=page_response)
-                current_page += 1
-            else:
-                time.sleep(self._proxies_wait_time)
-                self._get_proxies()
+            if search_response is not None:
+                if current_page > self._page_api.get_number_pages(search_response):
+                    break
 
         # Save stats results:
         # TODO: DataframeOperations.save_csv(self.outputs_folder + f"/log_results_stats.csv", self._stats_df)
 
-    @abstractmethod
-    def _send_request(self, page: int, proxy: str):
-        return str("")
+    def _send_request(self, request_params: dict, proxy: str):
+        def _get_param(param):
+            if param in request_params.keys():
+                return request_params[param]
+            else:
+                return None
 
-    @abstractmethod
-    def _save_results(self, page: int, result: str) -> None:
-        return None
-
-
-class WebScraperV1(WebScraperCore):
-    def __init__(self,
-                 execution_time: int = 3600,
-                 start_page: int = None,
-                 end_page: int = None,
-                 logger_level="INFO"):
-
-        super().__init__(execution_time=execution_time,
-                         start_page=start_page,
-                         end_page=end_page,
-                         logger_level=logger_level)
-
-        self._cochesNet_page = CochesNetPage()
-
-    def _send_request(self, page: int, proxy: str):
         response = Postman.send_request(
-            method='POST',
-            url=self._cochesNet_page.get_url_filter_most_recent(page),
-            headers=self._cochesNet_page.get_headers(),
+            method=_get_param("method"),
+            url=_get_param("url"),
+            headers=_get_param("headers"),
+            json=_get_param("json"),
             http_proxy=proxy,
             timeout=20,
             status_code_check=200
         )
-        return response.text
+        return response.json()
 
-    def _save_results(self, page: int, result: str) -> None:
-        FileOperations.write_file(self.outputs_folder + f"/page_{str(page)}.html",
-                                  result)
-        json_result = self._cochesNet_page.get_cars_dict_using_html(result)
+    def _save_page_results(self, page: int, result) -> None:
         JSONFileOperations.write_file(self.outputs_folder + f"/page_{str(page)}.json",
-                                      json_result)
+                                      result)
 
-
-class WebScraperV2(WebScraperCore):
-    def __init__(self,
-                 execution_time: int = 3600,
-                 start_page: int = None,
-                 end_page: int = None,
-                 logger_level="INFO"):
-
-        super().__init__(execution_time=execution_time,
-                         start_page=start_page,
-                         end_page=end_page,
-                         logger_level=logger_level)
-
-        self._cochesNet_api = CochesNetAPI()
-
-    def _send_request(self, page: int, proxy: str):
-        request_params = self._cochesNet_api.get_request_cars_by_relevance(page=page + 1)
-        response = Postman.send_request(
-            method=request_params["method"],
-            url=request_params["url"],
-            headers=request_params["headers"],
-            json=request_params["json"],
-            http_proxy=proxy,
-            timeout=20,
-            status_code_check=200
-        )
-        return json.loads(response.text)
-
-    def _save_results(self, page: int, result: str) -> None:
-        JSONFileOperations.write_file(self.outputs_folder + f"/page_{str(page)}.json",
+    def _save_detail_results(self, page: int, detail: int, result) -> None:
+        JSONFileOperations.write_file(self.outputs_folder + f"page_{str(page)}/detail_{str(detail)}.json",
                                       result)
 
 
 if __name__ == "__main__":
-    web_scraper = WebScraperV2(execution_time=3600, start_page=0, logger_level='DEBUG')
+    web_scraper = WebScraper(execution_time=3600, start_page=0, logger_level='DEBUG')
     web_scraper.run()

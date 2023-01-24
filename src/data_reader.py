@@ -5,8 +5,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 
-
-
 class DataReader:
     def __init__(self):
         pass
@@ -20,7 +18,7 @@ class DataReader:
         print(data_df_sorted)
 
         # sns.pairplot(data_df)
-        # sns.barplot(x='PROVINCE', y='PRICE', data=data_df, order=data_df_sorted['PROVINCE'], estimator=np.mean)
+        sns.barplot(x='PROVINCE', y='PRICE', data=data_df, order=data_df_sorted['PROVINCE'], estimator=np.mean)
         plt.show()
 
 

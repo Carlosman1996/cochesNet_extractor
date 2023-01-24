@@ -11,7 +11,7 @@ class CochesNetAPIData:
     headers = {
             'authority': 'ms-mt--api-web.spain.advgo.net',
             'sec-ch-ua': '"Not;ABrand";v="99","GoogleChrome";v="91","Chromium";v="91"',
-            'accept': 'application/json,text/plain,*/*',
+            'accept': 'application/json;charset=UTF-8',
             'x-adevinta-channel': 'web-desktop',
             'x-schibsted-tenant': 'coches',
             'sec-ch-ua-mobile': '?0',
@@ -25,14 +25,14 @@ class CochesNetAPIData:
             'accept-language': 'en-US,en;q=0.9,es;q=0.8'
         }
 
-    default_body = {
+    search_default_body = {
             "pagination": {
-                "page": 1,
+                "page": 0,
                 "size": 100
             },
             "sort": {
                 "order": "desc",
-                "term": "relevance"
+                "term": "year"
             },
             "filters": {
                 "isFinanced": False,
@@ -89,9 +89,10 @@ class CochesNetAPIData:
 class CochesNetAPI(CochesNetAPIData):
     def __init__(self):
         self.url_search_listing = self.base_url + "/search/listing"
+        self.url_announcement_detail = self.base_url + "/details/{id}"
 
-    def get_request_cars_by_relevance(self, page: int) -> dict:
-        body = self.default_body.copy()
+    def get_request_search_by_date_desc(self, page: int) -> dict:
+        body = self.search_default_body.copy()
         body["pagination"]["page"] = page
 
         request = {
@@ -101,3 +102,17 @@ class CochesNetAPI(CochesNetAPIData):
             "json": body
         }
         return request
+
+    def get_request_announcement(self, announcement: dict) -> dict:
+        request = {
+            "method": "GET",
+            "url": self.url_announcement_detail.replace('{id}', announcement["id"]),
+            "headers": self.headers
+        }
+        return request
+
+    def get_number_pages(self, response: dict) -> int:
+        return response["meta"]["totalResults"]
+
+    def get_announcements(self, response: dict) -> list:
+        return response["items"]
