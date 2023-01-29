@@ -166,6 +166,16 @@ class WebScraper:
         self._delete_proxies(remove_proxy_indexes)
         return response_content
 
+    def _check_elapsed_time(self):
+        elapsed_time = self._get_elapsed_time()
+        if elapsed_time > self._execution_time:
+            self._logger.set_message(level="INFO",
+                                     message_level="MESSAGE",
+                                     message=f"Finished iterating in: {str(int(elapsed_time))} seconds: "
+                                             f"TIME ending")
+            return True
+        return False
+
     def run(self):
         self._logger.set_message(level="INFO",
                                  message_level="SECTION",
@@ -177,12 +187,8 @@ class WebScraper:
         current_page = self.start_page if self.start_page is not None else 0
 
         while True:
-            elapsed_time = self._get_elapsed_time()
-            if elapsed_time > self._execution_time:
-                self._logger.set_message(level="INFO",
-                                         message_level="MESSAGE",
-                                         message=f"Finished iterating in: {str(int(elapsed_time))} seconds: "
-                                                 f"TIME ending")
+            # Finish iterations is elapsed time is greater than maximum execution time:
+            if self._check_elapsed_time():
                 break
 
             # Get url page content:
@@ -195,16 +201,22 @@ class WebScraper:
             if search_response is not None:
                 # Convert and save results:
                 self._save_page_results(page=current_page, result=search_response)
-                current_page += 1
 
                 # Read information per announcement:
                 for number, announcement in enumerate(self._page_api.get_announcements(search_response)):
+                    # Finish iterations is elapsed time is greater than maximum execution time:
+                    if self._check_elapsed_time():
+                        break
+
                     self._logger.set_message(level="INFO",
                                              message_level="SUBSECTION",
                                              message=f"Read announcement detail {number}")
                     request_params = self._page_api.get_request_announcement(announcement=announcement)
                     detail_response = self._get_url_content(request_params=request_params)
                     self._save_detail_results(page=current_page, detail=number, result=detail_response)
+
+                # Increment page number:
+                current_page += 1
             else:
                 time.sleep(self._proxies_wait_time)
                 self._get_proxies()
@@ -214,8 +226,7 @@ class WebScraper:
                 if current_page > self.end_page:
                     self._logger.set_message(level="INFO",
                                              message_level="MESSAGE",
-                                             message=f"Finished iterating in: {str(int(elapsed_time))} seconds: "
-                                                     f"PAGE ending")
+                                             message="Finished iterating: PAGE ending")
                     break
             if search_response is not None:
                 if current_page > self._page_api.get_number_pages(search_response):

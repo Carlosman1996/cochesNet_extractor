@@ -257,9 +257,9 @@ class DatabaseOperations:
 
     @staticmethod
     def create_connection(db_file):
-        """ create a database connection to the SQLite database
+        """ create a bbdd connection to the SQLite bbdd
             specified by db_file
-        :param db_file: database file
+        :param db_file: bbdd file
         :return: Connection object or None
         """
         conn = None
@@ -276,5 +276,22 @@ class DatabaseOperations:
         try:
             c = conn.cursor()
             c.execute(query)
+            return c
+        except Error as e:
+            print(e)
+
+    @staticmethod
+    def insert(conn, query):
+        try:
+            DatabaseOperations.execute_query(conn, query)
+            return conn.commit()
+        except Error as e:
+            print(e)
+
+    @staticmethod
+    def select(conn, query):
+        try:
+            cursor = DatabaseOperations.execute_query(conn, query)
+            return cursor.fetchall()
         except Error as e:
             print(e)

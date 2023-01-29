@@ -116,3 +116,91 @@ class CochesNetAPI(CochesNetAPIData):
 
     def get_announcements(self, response: dict) -> list:
         return response["items"]
+
+
+class CochesNetData:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def _get_model_value(model, keys):
+        try:
+            value = model
+            for key in keys:
+                value = value[key]
+            return value
+        except:
+            return None
+
+    def map_announcement_data(self, web_data):
+        return {
+            "ANNOUNCEMENT_ID": self._get_model_value(web_data, ["detail", "ad", "id"]),
+            "ANNOUNCER": "coches.net",
+            "TITLE": self._get_model_value(web_data, ["detail", "ad", "title"]),
+            "DESCRIPTION": self._get_model_value(web_data, ["detail", "ad", "description"]),
+            "URL": self._get_model_value(web_data, ["detail", "ad", "url"]),
+            "OFFER_TYPE": self._get_model_value(web_data, ["detail", "ad", "offerTypeId"]),
+            "VEHICLE_ID": None, # self._get_model_value(web_data, ["detail", "ad", "id"]),
+            "VEHICLE_KM": self._get_model_value(web_data, ["detail", "ad", "vehicle", "km"]),
+            "VEHICLE_YEAR": self._get_model_value(web_data, ["detail", "ad", "vehicle", "year"]),
+            "STATUS": self._get_model_value(web_data, ["detail", "ad", "status"]),
+            "VEHICLE_COLOR": self._get_model_value(web_data, ["detail", "ad", "vehicle", "color"]),
+            "PRICE": self._get_model_value(web_data, ["detail", "ad", "price", "price"]),
+            "FINANCED_PRICE": self._get_model_value(web_data, ["detail", "ad", "price", "financedPrice"]),
+            "HAS_TAXES": self._get_model_value(web_data, ["detail", "ad", "price", "hasTaxes"]),
+            "WARRANTY_MONTHS": self._get_model_value(web_data, ["detail", "ad", "vehicle", "warranty", "months"]),
+            "WARRANTY_OFFICIAL": self._get_model_value(web_data, ["detail", "ad", "vehicle", "warranty", "isOfficial"]),
+            "IS_FINANCED": True if self._get_model_value(web_data, ["detail", "ad", "price", "financedPrice"]) is not None else False,
+            "IS_CERTIFIED": self._get_model_value(web_data, ["detail", "ad", "vehicle", "isCertified"]),
+            "IS_PROFESSIONAL": True if self._get_model_value(web_data, ["detail", "ad", "professionalSeller", "id"]) is not None else False,
+            "HAS_URGE": None,
+            "PROVINCE": self._get_model_value(web_data, ["detail", "ad", "provinceId"]),
+            "AD_CREATION_DATE": self._get_model_value(web_data, ["detail", "ad", "creationDate"]),
+            "AD_PUBLISHED_DATE": self._get_model_value(web_data, ["detail", "ad", "publicationDate"]),
+            "ENVIRONMENTAL_LABEL": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "environmentalLabel"]),
+            "SELLER_ID": None, # self._get_model_value(web_data, ["detail", "ad", "id"]),
+            "CREATED_DATE": web_data["scraped_date"],
+            "CREATED_USER": "Ordillan",
+            "ANNOUNCEMENT": None
+        }
+
+    def map_vehicle_data(self, web_data):
+        return {
+            "MAKE": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "make"]),
+            "MODEL": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "model"]),
+            "VERSION": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "version"]),
+            "YEAR": self._get_model_value(web_data, ["detail", "vehicleSpecs", "year"]),
+            "HORSE_POWER": self._get_model_value(web_data, ["detail", "vehicleSpecs", "horsePower"]),
+            "FUEL_TYPE": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "fuelTypeId"]),
+            "CUBIC_CAPACITY": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "cubicCapacity"]),
+            "TRANSMISSION_TYPE": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "transmissionTypeId"]),
+            "CO2_EMISSIONS": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "co2Emissions"]),
+            "ENVIRONMENTAL_LABEL": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "environmentalLabel"]),
+            "DIMENSION_WIDTH": self._get_model_value(web_data, ["detail", "vehicleSpecs", "dimensionsInMillimeters", "width"]),
+            "DIMENSION_HEIGHT": self._get_model_value(web_data, ["detail", "vehicleSpecs", "dimensionsInMillimeters", "height"]),
+            "DIMENSION_LENGTH": self._get_model_value(web_data, ["detail", "vehicleSpecs", "dimensionsInMillimeters", "length"]),
+            "WEIGHT": self._get_model_value(web_data, ["detail", "vehicleSpecs", "weight"]),
+            "BODY_TYPE": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "bodyTypeId"]),
+            "NUMBER_DOORS": self._get_model_value(web_data, ["detail", "vehicleSpecs", "numberOfDoors"]),
+            "NUMBER_SEATS": self._get_model_value(web_data, ["detail", "vehicleSpecs", "numberOfSeats"]),
+            "TRUNK_CAPACITY_LITERS": self._get_model_value(web_data, ["detail", "vehicleSpecs", "trunkCapacityInLiters"]),
+            "TANK_CAPACITY_LITERS": self._get_model_value(web_data, ["detail", "ad", "tankCapacityInLiters"]),
+            "CONSUMPTION_URBAN": self._get_model_value(web_data, ["detail", "vehicleSpecs", "consumption", "urban"]),
+            "CONSUMPTION_MIXED": self._get_model_value(web_data, ["detail", "vehicleSpecs", "consumption", "mixed"]),
+            "CONSUMPTION_EXTRA_URBAN": self._get_model_value(web_data, ["detail", "vehicleSpecs", "consumption", "extraUrban"]),
+            "MAX_SPEED": self._get_model_value(web_data, ["detail", "vehicleSpecs", "maxSpeed"]),
+            "ACCELERATION": self._get_model_value(web_data, ["detail", "vehicleSpecs", "acceleration"]),
+            "MANUFACTURER_PRICE": self._get_model_value(web_data, ["detail", "vehicleSpecs", "manufacturerPrice"]),
+            "CREATED_DATE": web_data["scraped_date"],
+            "CREATED_USER": "Ordillan"
+        }
+
+    def map_seller_data(self, web_data):
+        return {
+            "NAME": self._get_model_value(web_data, ["detail", "professionalSeller", "name"]),
+            "PAGE_URL": self._get_model_value(web_data, ["detail", "professionalSeller", "externalPageUrl"]),
+            "PROVINCE": self._get_model_value(web_data, ["detail", "professionalSeller", "location", "province"]),
+            "ZIP_CODE": self._get_model_value(web_data, ["detail", "professionalSeller", "location", "zipCode"]),
+            "CREATED_DATE": web_data["scraped_date"],
+            "CREATED_USER": "Ordillan"
+        }

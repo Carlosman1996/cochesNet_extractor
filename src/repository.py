@@ -55,7 +55,7 @@ class Queries:
             ENVIRONMENTAL_LABEL text,
             CREATED_DATE numeric NOT NULL,
             CREATED_USER numeric NOT NULL,
-            ANNOUNCEMENT blob NOT NULL
+            ANNOUNCEMENT blob
         );
     """
 
@@ -83,13 +83,13 @@ class Queries:
             IS_PROFESSIONAL numeric,
             HAS_URGE numeric,
             PROVINCE text,
-            CREATION_DATE numeric,
-            PUBLISHED_DATE numeric,
+            AD_CREATION_DATE numeric,
+            AD_PUBLISHED_DATE numeric,
             ENVIRONMENTAL_LABEL text,
             SELLER_ID integer,
-            SCRAPED_DATE numeric NOT NULL,
-            SCRAPED_USER numeric NOT NULL,
-            ANNOUNCEMENT blob NOT NULL
+            CREATED_DATE numeric NOT NULL,
+            CREATED_USER numeric NOT NULL,
+            ANNOUNCEMENT blob
         );
     """
 
@@ -120,7 +120,21 @@ class Queries:
             CONSUMPTION_EXTRA_URBAN real,
             MAX_SPEED integer,
             ACCELERATION integer,
-            MANUFACTURER_PRICE integer
+            MANUFACTURER_PRICE integer,
+            CREATED_DATE numeric NOT NULL,
+            CREATED_USER numeric NOT NULL
+        );
+    """
+
+    statisticars_seller_table_query = """
+        CREATE TABLE IF NOT EXISTS SELLER (
+            ID integer PRIMARY KEY AUTOINCREMENT,
+            NAME text NOT NULL,
+            PAGE_URL text,
+            PROVINCE text,
+            ZIP_CODE text,
+            CREATED_DATE numeric NOT NULL,
+            CREATED_USER numeric NOT NULL
         );
     """
 
@@ -129,106 +143,165 @@ class Queries:
     """
 
     @staticmethod
-    def create_statisticars_insert_row_query(data):
+    def create_statisticars_insert_row_query(table, data):
+        values_str = ""
+        for index, value in enumerate(data.values()):
+            if value is None:
+                values_str += "NULL"
+            elif type(value) == str:
+                values_str += f"'{str(value)}'"
+            else:
+                values_str += f"{value}"
+
+            if len(data.values()) > index + 1:
+                values_str += ", "
+
         return f"""
-            INSERT INTO ANNOUNCEMENTS_OLD(ANNOUNCEMENT_ID,
-                                          ANNOUNCER,
-                                          TITLE,
-                                          URL,
-                                          PRICE,
-                                          WARRANTY_MONTHS,
-                                          IS_FINANCED,
-                                          IS_CERTIFIED,
-                                          IS_PROFESSIONAL,
-                                          HAS_URGE,
-                                          KM,
-                                          YEAR,
-                                          CC,
-                                          PROVINCE,
-                                          FUEL_TYPE,
-                                          PUBLISHED_DATE,
-                                          ENVIRONMENTAL_LABEL,
-                                          CREATED_DATE,
-                                          CREATED_USER,
-                                          _DATA)
-            VALUES(
-                {data["announcement_id"]},
-                {data["announcer"]},
-                {data["title"]},
-                {data["url"]},
-                {data["price"]},
-                {data["warranty_months"]},
-                {data["is_financed"]},
-                {data["is_certified"]},
-                {data["is_professional"]},
-                {data["har_urge"]},
-                {data["km"]},
-                {data["year"]},
-                {data["cc"]},
-                {data["province"]},
-                {data["fuel_type"]},
-                {data["published_date"]},
-                {data["environmental_label"]},
-                {data["created_date"]},
-                {data["created_user"]},
-                {data[":data"]},                
-            );
+            INSERT INTO {table} ({', '.join(data.keys())})
+            VALUES ({values_str});
         """
+
+    @staticmethod
+    def create_statisticars_select_announcement_id_query(announcement_id, announcer):
+        return f"""
+            SELECT ID FROM ANNOUNCEMENT
+            WHERE ANNOUNCEMENT_ID = {announcement_id}
+            AND ANNOUNCER = '{announcer}';
+        """
+
+    @staticmethod
+    def create_statisticars_select_vehicle_id_query(vehicle_make, vehicle_model, vehicle_version, vehicle_year):
+        query = f"""
+            SELECT ID FROM VEHICLE
+            WHERE MAKE = '{vehicle_make}'
+            AND MODEL = '{vehicle_model}'
+        """
+        if vehicle_version is not None:
+            query += f"    AND VERSION = '{vehicle_version}'"
+        if vehicle_year is not None:
+            query += f"    AND YEAR = '{vehicle_year}'"
+        query += ';'
+        return query
+
+    @staticmethod
+    def create_statisticars_select_seller_id_query(seller_name, seller_province):
+        query = f"""
+            SELECT ID FROM SELLER
+            WHERE NAME = '{seller_name}'
+        """
+        if seller_province is not None:
+            query += f"    AND PROVINCE = '{seller_province}'"
+        query += ';'
+        return query
 
 
 class Repository(Queries):
     @staticmethod
-    def create_main_table():
-        # Create a database connection
+    def create_announcements_table():
+        # Create a bbdd connection
         conn = DatabaseOperations.create_connection(Queries.bbdd_path)
 
         if conn is not None:
             DatabaseOperations.execute_query(conn, Queries.statisticars_announcement_table_query)
         else:
-            print("Error! Cannot create the database connection.")
+            print("Error! Cannot create the bbdd connection.")
 
     @staticmethod
     def create_vehicles_table():
-        # Create a database connection
+        # Create a bbdd connection
         conn = DatabaseOperations.create_connection(Queries.bbdd_path)
 
         if conn is not None:
             DatabaseOperations.execute_query(conn, Queries.statisticars_vehicle_table_query)
         else:
-            print("Error! Cannot create the database connection.")
+            print("Error! Cannot create the bbdd connection.")
 
     @staticmethod
-    def insert_row(row):
-        # Create a database connection
+    def create_sellers_table():
+        # Create a bbdd connection
         conn = DatabaseOperations.create_connection(Queries.bbdd_path)
 
         if conn is not None:
-            query = Queries.create_statisticars_insert_row_query(row)
-            DatabaseOperations.execute_query(conn, query)
+            DatabaseOperations.execute_query(conn, Queries.statisticars_seller_table_query)
         else:
-            print("Error! Cannot create the database connection.")
+            print("Error! Cannot create the bbdd connection.")
+
+    @staticmethod
+    def insert_json(table, data):
+        # Create a bbdd connection
+        conn = DatabaseOperations.create_connection(Queries.bbdd_path)
+
+        if conn is not None:
+            query = Queries.create_statisticars_insert_row_query(table, data)
+            print(query)
+            DatabaseOperations.insert(conn, query)
+        else:
+            print("Error! Cannot create the bbdd connection.")
 
     @staticmethod
     def insert_df(table, data_df):
-        # Create a database connection
+        # Create a bbdd connection
         conn = DatabaseOperations.create_connection(Queries.bbdd_path)
 
         if conn is not None:
             DataframeOperations.insert_sql(conn, table, data_df)
         else:
-            print("Error! Cannot create the database connection.")
+            print("Error! Cannot create the bbdd connection.")
 
     @staticmethod
     def read_all_to_df():
-        # Create a database connection
+        # Create a bbdd connection
         conn = DatabaseOperations.create_connection(Queries.bbdd_path)
 
         if conn is not None:
             return DataframeOperations.select_sql(conn, Queries.read_statisticars_announcement_table_query)
         else:
-            print("Error! Cannot create the database connection.")
+            print("Error! Cannot create the bbdd connection.")
             return None
+
+    @staticmethod
+    def get_announcement_id(announcement_id, announcer):
+        # Create a bbdd connection
+        conn = DatabaseOperations.create_connection(Queries.bbdd_path)
+
+        if conn is not None:
+            query = Queries.create_statisticars_select_announcement_id_query(announcement_id, announcer)
+            data_ddbb = DatabaseOperations.select(conn, query)
+            return data_ddbb
+        else:
+            print("Error! Cannot create the bbdd connection.")
+            return None
+
+    @staticmethod
+    def get_vehicle_id(vehicle_make, vehicle_model, vehicle_version, vehicle_year):
+        # Create a bbdd connection
+        conn = DatabaseOperations.create_connection(Queries.bbdd_path)
+
+        if conn is not None:
+            query = Queries.create_statisticars_select_vehicle_id_query(vehicle_make, vehicle_model, vehicle_version, vehicle_year)
+            data_ddbb = DatabaseOperations.select(conn, query)
+            return data_ddbb
+        else:
+            print("Error! Cannot create the bbdd connection.")
+            return None
+
+    @staticmethod
+    def get_seller_id(seller_name, seller_province):
+        # Create a bbdd connection
+        conn = DatabaseOperations.create_connection(Queries.bbdd_path)
+
+        if conn is not None:
+            query = Queries.create_statisticars_select_seller_id_query(seller_name, seller_province)
+            data_ddbb = DatabaseOperations.select(conn, query)
+            return data_ddbb
+        else:
+            print("Error! Cannot create the bbdd connection.")
+            return None
+
+
 
 
 if __name__ == '__main__':
     Repository.create_vehicles_table()
+    Repository.create_announcements_table()
+    Repository.create_sellers_table()
