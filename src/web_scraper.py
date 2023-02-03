@@ -210,7 +210,7 @@ class WebScraper:
 
                     self._logger.set_message(level="INFO",
                                              message_level="SUBSECTION",
-                                             message=f"Read announcement detail {number}")
+                                             message=f"Page {current_page}: read announcement detail {number}")
                     request_params = self._page_api.get_request_announcement(announcement=announcement)
                     detail_response = self._get_url_content(request_params=request_params)
                     self._save_detail_results(page=current_page, detail=number, result=detail_response)

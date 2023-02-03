@@ -279,6 +279,8 @@ class DatabaseOperations:
             return c
         except Error as e:
             print(e)
+            print(query)
+            return None
 
     @staticmethod
     def insert(conn, query):
@@ -287,6 +289,8 @@ class DatabaseOperations:
             return conn.commit()
         except Error as e:
             print(e)
+            print(query)
+            return None
 
     @staticmethod
     def select(conn, query):
@@ -295,3 +299,5 @@ class DatabaseOperations:
             return cursor.fetchall()
         except Error as e:
             print(e)
+            print(query)
+            return None

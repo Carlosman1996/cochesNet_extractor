@@ -80,76 +80,103 @@ class DataExtractor:
                                  message_level="SECTION",
                                  message="Start Data Extractor")
 
+        # Set entities counters:
+        new_announcements = 0
+        new_vehicles = 0
+        new_sellers = 0
+
         # Read pages JSONs:
         json_searchs_paths = DirectoryOperations.find_files_using_pattern(self._search_files_pattern)
 
         # Read search data:
         for json_search_path in json_searchs_paths:
-            search_data_file = JSONFileOperations.read_file(json_search_path)
+            try:
+                search_data_file = JSONFileOperations.read_file(json_search_path)
 
-            # Read page number:
-            search_file_name = os.path.basename(json_search_path)
-            page = os.path.splitext(search_file_name)[0].replace("page_", "")
-
-            self._logger.set_message(level="INFO",
-                                     message_level="SUBSECTION",
-                                     message=f"Extract data from page: {page}")
-
-            # Read details JSONs:
-            search_details_folder = json_search_path.split(".")[0]
-            json_details_paths = DirectoryOperations.find_files_using_pattern(self._set_detail_files_pattern(search_details_folder))
-
-            # Read detail data:
-            for json_detail_path in json_details_paths:
-                detail_data_file = JSONFileOperations.read_file(json_detail_path)
-
-                # Read detail number:
-                detail_file_name = os.path.basename(json_detail_path)
-                detail = os.path.splitext(detail_file_name)[0].replace("detail_", "")
+                # Read page number:
+                search_file_name = os.path.basename(json_search_path)
+                page = os.path.splitext(search_file_name)[0].replace("page_", "")
 
                 self._logger.set_message(level="INFO",
+                                         message_level="SUBSECTION",
+                                         message=f"Extract data from page: {page}")
+
+                # Read details JSONs:
+                search_details_folder = json_search_path.split(".")[0]
+                json_details_paths = DirectoryOperations.find_files_using_pattern(self._set_detail_files_pattern(search_details_folder))
+
+                # Read detail data:
+                for json_detail_path in json_details_paths:
+                    try:
+                        detail_data_file = JSONFileOperations.read_file(json_detail_path)
+
+                        # Read detail number:
+                        detail_file_name = os.path.basename(json_detail_path)
+                        detail = os.path.splitext(detail_file_name)[0].replace("detail_", "")
+
+                        self._logger.set_message(level="DEBUG",
+                                                 message_level="COMMENT",
+                                                 message=f"Extract data from detail: page {page} - detail {detail}")
+
+                        # Pre-extraction data:
+                        scrapped_data = {
+                            "detail": detail_data_file,
+                            "scraped_date": self._get_file_creation_date(json_detail_path)
+                        }
+
+                        # Extract data:
+                        announcement_db_data = self._cochesNet_data.map_announcement_data(scrapped_data)
+                        vehicle_db_data = self._cochesNet_data.map_vehicle_data(scrapped_data)
+                        seller_db_data = self._cochesNet_data.map_seller_data(scrapped_data)
+
+                        # Check data already exists:
+                        equal_announcements = Repository.get_announcement_id(announcement_db_data["ANNOUNCEMENT_ID"],
+                                                                             announcement_db_data["ANNOUNCER"])
+                        if len(equal_announcements) == 0 or equal_announcements is None:
+                            # Insert vehicle:
+                            vehicle = Repository.get_vehicle_id(vehicle_db_data["MAKE"],
+                                                                vehicle_db_data["MODEL"],
+                                                                vehicle_db_data["VERSION"],
+                                                                vehicle_db_data["YEAR"])
+                            if len(vehicle) == 0 or vehicle is None:
+                                Repository.insert_json("VEHICLE", vehicle_db_data)
+                                new_vehicles += 1
+                                vehicle = Repository.get_vehicle_id(vehicle_db_data["MAKE"],
+                                                                    vehicle_db_data["MODEL"],
+                                                                    vehicle_db_data["VERSION"],
+                                                                    vehicle_db_data["YEAR"])
+                            announcement_db_data["VEHICLE_ID"] = vehicle[0][0]
+
+                            # Insert seller:
+                            seller = Repository.get_seller_id(seller_db_data["NAME"], seller_db_data["PROVINCE"])
+                            if seller_db_data["NAME"] is not None:
+                                if len(seller) == 0 or seller is None:
+                                    Repository.insert_json("SELLER", seller_db_data)
+                                    new_sellers += 1
+                                    seller = Repository.get_seller_id(seller_db_data["NAME"],
+                                                                      seller_db_data["PROVINCE"])
+                                announcement_db_data["SELLER_ID"] = seller[0][0]
+                            else:
+                                announcement_db_data["SELLER_ID"] = None
+
+                            # Insert announcement:
+                            Repository.insert_json("ANNOUNCEMENT", announcement_db_data)
+                            new_announcements += 1
+                    except Exception as exception:
+                        self._logger.set_message(level="DEBUG",
+                                                 message_level="COMMENT",
+                                                 message=f"Exception in detail data processing: {str(exception)}")
+            except Exception as exception:
+                self._logger.set_message(level="DEBUG",
                                          message_level="COMMENT",
-                                         message=f"Extract data from detail: page {page} - detail {detail}")
+                                         message=f"Exception in search data processing: {str(exception)}")
 
-                # Pre-extraction data:
-                scrapped_data = {
-                    "detail": detail_data_file,
-                    "scraped_date": self._get_file_creation_date(json_detail_path)
-                }
-
-                # Extract data:
-                announcement_db_data = self._cochesNet_data.map_announcement_data(scrapped_data)
-                vehicle_db_data = self._cochesNet_data.map_vehicle_data(scrapped_data)
-                seller_db_data = self._cochesNet_data.map_seller_data(scrapped_data)
-
-                # Check data already exists:
-                equal_announcements = len(Repository.get_announcement_id(announcement_db_data["ANNOUNCEMENT_ID"],
-                                                                         announcement_db_data["ANNOUNCER"]))
-                if equal_announcements == 0 or equal_announcements is None:
-                    # Insert vehicle:
-                    vehicle = Repository.get_vehicle_id(vehicle_db_data["MAKE"],
-                                                        vehicle_db_data["MODEL"],
-                                                        vehicle_db_data["VERSION"],
-                                                        vehicle_db_data["YEAR"])
-                    if len(vehicle) == 0 or vehicle is None:
-                        Repository.insert_json("VEHICLE", vehicle_db_data)
-                        vehicle = Repository.get_vehicle_id(vehicle_db_data["MAKE"],
-                                                            vehicle_db_data["MODEL"],
-                                                            vehicle_db_data["VERSION"],
-                                                            vehicle_db_data["YEAR"])
-                    announcement_db_data["VEHICLE_ID"] = vehicle[0][0]
-
-
-                    # Insert seller:
-                    seller = Repository.get_seller_id(seller_db_data["NAME"], seller_db_data["PROVINCE"])
-                    if seller_db_data["NAME"] is not None and len(seller) == 0 or seller is None:
-                        Repository.insert_json("SELLER", seller_db_data)
-                        seller = Repository.get_seller_id(seller_db_data["NAME"],
-                                                          seller_db_data["PROVINCE"])
-                    announcement_db_data["SELLER_ID"] = seller[0][0]
-
-                    # Insert announcement:
-                    Repository.insert_json("ANNOUNCEMENT", announcement_db_data)
+        self._logger.set_message(level="INFO",
+                                 message_level="COMMENT",
+                                 message=f"Data extractor summary:"
+                                         f"\n\tNew announcements: {new_announcements}"
+                                         f"\n\tNew vehicles: {new_vehicles}"
+                                         f"\n\tNew sellers: {new_sellers}")
 
     def old_run(self):
         number_rows_read = 0

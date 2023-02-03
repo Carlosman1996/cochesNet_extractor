@@ -149,7 +149,8 @@ class Queries:
             if value is None:
                 values_str += "NULL"
             elif type(value) == str:
-                values_str += f"'{str(value)}'"
+                format_value = str(value).replace("'", "''")
+                values_str += f"'{format_value}'"
             else:
                 values_str += f"{value}"
 
@@ -233,7 +234,6 @@ class Repository(Queries):
 
         if conn is not None:
             query = Queries.create_statisticars_insert_row_query(table, data)
-            print(query)
             DatabaseOperations.insert(conn, query)
         else:
             print("Error! Cannot create the bbdd connection.")
@@ -297,8 +297,6 @@ class Repository(Queries):
         else:
             print("Error! Cannot create the bbdd connection.")
             return None
-
-
 
 
 if __name__ == '__main__':
