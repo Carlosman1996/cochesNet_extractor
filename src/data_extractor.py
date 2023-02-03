@@ -73,7 +73,7 @@ class DataExtractor:
     @staticmethod
     def _get_file_creation_date(file_path):
         c_time = os.path.getctime(file_path)
-        return str(datetime.fromtimestamp(c_time).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        return str(datetime.fromtimestamp(c_time).strftime("%Y-%m-%dT%H:%M:%S:%fZ"))
 
     def run(self):
         self._logger.set_message(level="INFO",
@@ -123,6 +123,8 @@ class DataExtractor:
                             "detail": detail_data_file,
                             "scraped_date": self._get_file_creation_date(json_detail_path)
                         }
+
+                        # TODO: update database provinces, fuel types, etc. using search data, not detail
 
                         # Extract data:
                         announcement_db_data = self._cochesNet_data.map_announcement_data(scrapped_data)
