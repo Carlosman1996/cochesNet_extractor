@@ -85,7 +85,6 @@ class CochesNetAPIData:
             }
         }
 
-
 class CochesNetAPI(CochesNetAPIData):
     def __init__(self):
         self.url_search_listing = self.base_url + "/search/listing"
@@ -132,6 +131,34 @@ class CochesNetData:
         except:
             return None
 
+    @staticmethod
+    def get_transmission_type(transmission_type_id):
+        if transmission_type_id == 1:
+            return "Automático"
+        elif transmission_type_id == 2:
+            return "Manual"
+        else:
+            return f"Unknown transmission type id: {transmission_type_id}"
+
+    @staticmethod
+    def get_body_type(body_type_id):
+        if body_type_id == 1:
+            return "Berlina"
+        elif body_type_id == 2:
+            return "Coupé"
+        elif body_type_id == 3:
+            return "Cabrio"
+        elif body_type_id == 4:
+            return "Familiar"
+        elif body_type_id == 5:
+            return "Monovolumen"
+        elif body_type_id == 6:
+            return "4X4 SUV"
+        elif body_type_id == 7:
+            return "Pick Up"
+        else:
+            return f"Unknown body type id: {body_type_id}"
+
     def map_announcement_data(self, web_data):
         return {
             "ANNOUNCEMENT_ID": self._get_model_value(web_data, ["detail", "ad", "id"]),
@@ -139,7 +166,7 @@ class CochesNetData:
             "TITLE": self._get_model_value(web_data, ["detail", "ad", "title"]),
             "DESCRIPTION": self._get_model_value(web_data, ["detail", "ad", "description"]),
             "URL": self._get_model_value(web_data, ["detail", "ad", "url"]),
-            "OFFER_TYPE": self._get_model_value(web_data, ["detail", "ad", "offerTypeId"]),
+            "OFFER_TYPE": self._get_model_value(web_data, ["search", "offerType", "literal"]),
             "VEHICLE_ID": None, # self._get_model_value(web_data, ["detail", "ad", "id"]),
             "VEHICLE_KM": self._get_model_value(web_data, ["detail", "ad", "vehicle", "km"]),
             "VEHICLE_YEAR": self._get_model_value(web_data, ["detail", "ad", "vehicle", "year"]),
@@ -153,8 +180,8 @@ class CochesNetData:
             "IS_FINANCED": True if self._get_model_value(web_data, ["detail", "ad", "price", "financedPrice"]) is not None else False,
             "IS_CERTIFIED": self._get_model_value(web_data, ["detail", "ad", "vehicle", "isCertified"]),
             "IS_PROFESSIONAL": True if self._get_model_value(web_data, ["detail", "ad", "professionalSeller", "id"]) is not None else False,
-            "HAS_URGE": None,
-            "PROVINCE": self._get_model_value(web_data, ["detail", "ad", "provinceId"]),
+            "HAS_URGE": self._get_model_value(web_data, ["search", "hasUrge"]),
+            "PROVINCE": self._get_model_value(web_data, ["search", "mainProvince"]),
             "AD_CREATION_DATE": self._get_model_value(web_data, ["detail", "ad", "creationDate"]),
             "AD_PUBLISHED_DATE": self._get_model_value(web_data, ["detail", "ad", "publicationDate"]),
             "ENVIRONMENTAL_LABEL": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "environmentalLabel"]),
@@ -171,16 +198,16 @@ class CochesNetData:
             "VERSION": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "version"]),
             "YEAR": self._get_model_value(web_data, ["detail", "vehicleSpecs", "year"]),
             "HORSE_POWER": self._get_model_value(web_data, ["detail", "vehicleSpecs", "horsePower"]),
-            "FUEL_TYPE": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "fuelTypeId"]),
+            "FUEL_TYPE": self._get_model_value(web_data, ["search", "fuelType"]),
             "CUBIC_CAPACITY": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "cubicCapacity"]),
-            "TRANSMISSION_TYPE": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "transmissionTypeId"]),
+            "TRANSMISSION_TYPE": self.get_transmission_type(self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "transmissionTypeId"])),
             "CO2_EMISSIONS": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "co2Emissions"]),
             "ENVIRONMENTAL_LABEL": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "environmentalLabel"]),
             "DIMENSION_WIDTH": self._get_model_value(web_data, ["detail", "vehicleSpecs", "dimensionsInMillimeters", "width"]),
             "DIMENSION_HEIGHT": self._get_model_value(web_data, ["detail", "vehicleSpecs", "dimensionsInMillimeters", "height"]),
             "DIMENSION_LENGTH": self._get_model_value(web_data, ["detail", "vehicleSpecs", "dimensionsInMillimeters", "length"]),
             "WEIGHT": self._get_model_value(web_data, ["detail", "vehicleSpecs", "weight"]),
-            "BODY_TYPE": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "bodyTypeId"]),
+            "BODY_TYPE": self.get_body_type(self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "bodyTypeId"])),
             "NUMBER_DOORS": self._get_model_value(web_data, ["detail", "vehicleSpecs", "numberOfDoors"]),
             "NUMBER_SEATS": self._get_model_value(web_data, ["detail", "vehicleSpecs", "numberOfSeats"]),
             "TRUNK_CAPACITY_LITERS": self._get_model_value(web_data, ["detail", "vehicleSpecs", "trunkCapacityInLiters"]),

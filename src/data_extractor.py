@@ -12,7 +12,7 @@ from src.utils import FileOperations
 from src.utils import DirectoryOperations
 from src.utils import JSONFileOperations
 from src.cochesNet_api import CochesNetData
-from repository import Repository
+from src.repository import Repository
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -108,7 +108,15 @@ class DataExtractor:
                 # Read detail data:
                 for json_detail_path in json_details_paths:
                     try:
+                        # Read data:
                         detail_data_file = JSONFileOperations.read_file(json_detail_path)
+                        search_detail_data = None
+
+                        for search_data_item in search_data_file["items"]:
+                            if search_data_item["id"] == detail_data_file["ad"]["id"]:
+                                search_detail_data = search_data_item
+                        if search_detail_data is None:
+                            raise Exception(f"Search data item not found: {detail_data_file}")
 
                         # Read detail number:
                         detail_file_name = os.path.basename(json_detail_path)
@@ -120,11 +128,10 @@ class DataExtractor:
 
                         # Pre-extraction data:
                         scrapped_data = {
+                            "search": search_detail_data,
                             "detail": detail_data_file,
                             "scraped_date": self._get_file_creation_date(json_detail_path)
                         }
-
-                        # TODO: update database provinces, fuel types, etc. using search data, not detail
 
                         # Extract data:
                         announcement_db_data = self._cochesNet_data.map_announcement_data(scrapped_data)
@@ -209,7 +216,6 @@ class DataExtractor:
                 for data_item in data_file["items"]:
                     data_model = copy.deepcopy(self.data_model)
 
-                    # TODO: input data model is hardcoded - It changes depending on announcements source
                     data_model["ANNOUNCEMENT_ID"] = data_item["id"]
                     data_model["ANNOUNCER"] = "Coches.net"
                     data_model["TITLE"] = self._get_model_value(data_item, ["title"])

@@ -53,7 +53,7 @@ class Queries:
             FUEL_TYPE text,
             PUBLISHED_DATE numeric,
             ENVIRONMENTAL_LABEL text,
-            CREATED_DATE numeric NOT NULL,
+            CREATED_DATE numeric NOT NULL¡
             CREATED_USER numeric NOT NULL,
             ANNOUNCEMENT blob
         );
