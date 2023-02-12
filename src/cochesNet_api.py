@@ -117,6 +117,9 @@ class CochesNetAPI(CochesNetAPIData):
     def get_announcements(self, response: dict) -> list:
         return response["items"]
 
+    def get_announcement_id(self, annnouncement: dict) -> int:
+        return annnouncement["id"]
+
 
 class CochesNetData:
     def __init__(self):
