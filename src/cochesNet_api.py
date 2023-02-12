@@ -87,6 +87,7 @@ class CochesNetAPIData:
 
 class CochesNetAPI(CochesNetAPIData):
     def __init__(self):
+        self.page_name = "coches.net"
         self.url_search_listing = self.base_url + "/search/listing"
         self.url_announcement_detail = self.base_url + "/details/{id}"
 

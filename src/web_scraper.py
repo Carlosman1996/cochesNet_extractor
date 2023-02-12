@@ -15,8 +15,8 @@ from src.utils import DataframeOperations
 from src.utils import JSONFileOperations
 from src.proxies_finder import ProxiesFinder
 from src.postman import Postman
-from src.cochesNet_page import CochesNetPage
 from src.cochesNet_api import CochesNetAPI
+from src.repository import Repository
 
 TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 
@@ -37,8 +37,8 @@ class WebScraper:
         self._proxies_df = pd.DataFrame
         self.outputs_folder = ROOT_PATH + "/outputs/" + str(int(datetime.now().timestamp()))
         self._logger_level = logger_level
-        self._proxies_wait_time = 60
-        self._scrapping_wait_time = 0.5
+        self._proxies_wait_time = 0
+        self._scrapping_wait_time = 0
 
         # Set web to scrap:
         self._page_api = CochesNetAPI()
@@ -208,12 +208,19 @@ class WebScraper:
                     if self._check_elapsed_time():
                         break
 
-                    self._logger.set_message(level="INFO",
-                                             message_level="SUBSECTION",
-                                             message=f"Page {current_page}: read announcement detail {number}")
-                    request_params = self._page_api.get_request_announcement(announcement=announcement)
-                    detail_response = self._get_url_content(request_params=request_params)
-                    self._save_detail_results(page=current_page, detail=number, result=detail_response)
+                    # If announcement is not on database, read the detail:
+                    equal_announcements = Repository.get_announcement_id(announcement["id"], self._page_api.page_name)
+                    if len(equal_announcements) == 0 or equal_announcements is None:
+                        self._logger.set_message(level="INFO",
+                                                 message_level="SUBSECTION",
+                                                 message=f"Page {current_page}: read announcement detail {number}")
+                        request_params = self._page_api.get_request_announcement(announcement=announcement)
+                        detail_response = self._get_url_content(request_params=request_params)
+                        self._save_detail_results(page=current_page, detail=number, result=detail_response)
+                    else:
+                        self._logger.set_message(level="INFO",
+                                                 message_level="SUBSECTION",
+                                                 message=f"Page {current_page}: announcement detail {number} already read")
 
                 # Increment page number:
                 current_page += 1
@@ -265,3 +272,12 @@ class WebScraper:
 if __name__ == "__main__":
     web_scraper = WebScraper(execution_time=3600, start_page=0, logger_level='DEBUG')
     web_scraper.run()
+
+"""
+POSSIBLE IMPROVEMENTS - SCHEMA IDEA:
+1. Read search data and save information, as it's working at the moment (1 thread).
+2. New web scraper method, parallel and independent, that reads search data y scrap detail if it is not present on DB (multithread):
+2.0. Preconditions: method schedules and executes like searchs scraper.
+2.1. Read all NEW search files in the current iteration and extract all ids.
+2.2. All ids not present on BBDD are scraped.
+"""
