@@ -41,7 +41,6 @@ class WebScraper:
         self._scrapping_wait_time = 0
         self._number_api_retries = 10
         self._exit = False
-        self._exit_detail = False
 
         # Set web to scrap:
         self._page_api = CochesNetAPI()
@@ -75,7 +74,7 @@ class WebScraper:
                                  message_level="SUBSECTION",
                                  message="Read proxies")
 
-        proxies_finder = ProxiesFinder(anonymity_filter=[1, 2], max_size=50)
+        proxies_finder = ProxiesFinder(anonymity_filter=[1, 2])
         proxies_finder.get_proxies()
         self.proxies = proxies_finder.proxies_list
         self._proxies_df = proxies_finder.proxies_df
@@ -185,12 +184,11 @@ class WebScraper:
         return False
 
     def _get_detail_data(self, index_worker: int, queue_obj: queue, current_page: int):
-        self._exit_detail = False
-        while not self._exit_detail:
+        while not queue_obj.empty():
             announcement = queue_obj.get()
             announcement_id = self._page_api.get_announcement_id(announcement)
 
-            self._logger.set_message(level="DEBUG",
+            self._logger.set_message(level="INFO",
                                      message_level="COMMENT",
                                      message=f"Page {current_page}: read announcement detail {announcement_id}\n"
                                              f"Worker: {index_worker}, PID: {os.getpid()}, "
@@ -202,6 +200,7 @@ class WebScraper:
             if detail_response is not None:
                 self._save_detail_results(page=current_page, detail=announcement_id, result=detail_response)
             queue_obj.task_done()   # TODO: task done even if detail_response=None?
+        return True
 
     def run(self):
         self._logger.set_message(level="INFO",
@@ -257,10 +256,10 @@ class WebScraper:
                                          message_level="COMMENT",
                                          message=f"Page {current_page}: announcements to read: {queue_size}")
                 for index in range(number_workers):
-                    threading.Thread(target=self._get_detail_data, args=(index, queue_obj, current_page), daemon=True)\
-                        .start()
+                    threading.Thread(target=self._get_detail_data,
+                                     args=(index, queue_obj, current_page),
+                                     daemon=True).start()
                 queue_obj.join()
-                self._exit_detail = True
 
                 # Increment page number:
                 current_page += 1
@@ -313,7 +312,7 @@ class WebScraper:
 
 
 if __name__ == "__main__":
-    web_scraper = WebScraper(execution_time=3600, start_page=100, logger_level='DEBUG')
+    web_scraper = WebScraper(execution_time=3600, start_page=32, logger_level='DEBUG')
     web_scraper.run()
 
 """

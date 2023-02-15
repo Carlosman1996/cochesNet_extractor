@@ -143,13 +143,17 @@ class Queries:
     """
 
     @staticmethod
+    def _value_to_str_for_db(value):
+        return str(value).replace("'", "''")
+
+    @staticmethod
     def create_statisticars_insert_row_query(table, data):
         values_str = ""
         for index, value in enumerate(data.values()):
             if value is None:
                 values_str += "NULL"
             elif type(value) == str:
-                format_value = str(value).replace("'", "''")
+                format_value = Queries._value_to_str_for_db(value)
                 values_str += f"'{format_value}'"
             else:
                 values_str += f"{value}"
@@ -174,8 +178,8 @@ class Queries:
     def create_statisticars_select_vehicle_id_query(vehicle_make, vehicle_model, vehicle_version, vehicle_year):
         query = f"""
             SELECT ID FROM VEHICLE
-            WHERE MAKE = '{vehicle_make}'
-            AND MODEL = '{vehicle_model}'
+            WHERE MAKE = '{Queries._value_to_str_for_db(vehicle_make)}'
+            AND MODEL = '{Queries._value_to_str_for_db(vehicle_model)}'
         """
         if vehicle_version is not None:
             query += f"    AND VERSION = '{vehicle_version}'"
@@ -188,7 +192,7 @@ class Queries:
     def create_statisticars_select_seller_id_query(seller_name, seller_province):
         query = f"""
             SELECT ID FROM SELLER
-            WHERE NAME = '{seller_name}'
+            WHERE NAME = '{Queries._value_to_str_for_db(seller_name)}'
         """
         if seller_province is not None:
             query += f"    AND PROVINCE = '{seller_province}'"

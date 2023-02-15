@@ -51,11 +51,11 @@ class Logger:
     def set_message(self, level, message_level, message):
         # Modify message depending on level:
         if message_level == "SECTION":
-            message = f" ########## {message.upper()} ##########\n"
+            message = f"\n ########## {message.upper()} ##########\n"
         elif message_level == "SUBSECTION":
-            message = f" ---------- {message} ----------\n"
+            message = f"\n ---------- {message} ----------\n"
         else:
-            message = f"\t {message}\n"
+            message = f"\n\t {message}\n"
 
         # Write message:
         if level == "DEBUG":
