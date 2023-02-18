@@ -39,6 +39,7 @@ class WebScraper:
         self._proxies_wait_time = 0
         self._scrapping_wait_time = 0
         self._number_api_retries = 10
+        self._max_number_threads = 10
         self._exit = False
         self._proxies_finder = False
 
@@ -195,25 +196,28 @@ class WebScraper:
             announcement = queue_obj.get()
             announcement_id = self._page_api.get_announcement_id(announcement)
 
-            self._logger.set_message(level="INFO",
+            self._logger.set_message(level="DEBUG",
                                      message_level="COMMENT",
                                      message=f"Page {current_page}: read announcement detail {announcement_id}\n"
-                                             f"Worker: {index_worker}, PID: {os.getpid()}, "
+                                             f"Worker: {index_worker}, "
+                                             f"PID: {os.getpid()}, "
                                              f"TID: {threading.get_ident()}")
 
             request_params = self._page_api.get_request_announcement(announcement=announcement)
             try:
+
                 detail_response = self._get_url_content(request_params=request_params, url_reference=announcement_id)
             except Exception as exception:
                 self._logger.set_message(level="ERROR",
                                          message_level="MESSAGE",
-                                         message=f"ERROR reading page detail: {announcement_id}\n{str(exception)}")
+                                         message=f"Page {current_page}: announcement detail {announcement_id} ERROR.\n"
+                                                 f"{str(exception)}")
+                queue_obj.put(announcement)     # Add again to queue
                 detail_response = None
 
-            # TODO: how to deal with NONEs - not scraped information?
             if detail_response is not None:
                 self._save_detail_results(page=current_page, detail=announcement_id, result=detail_response)
-            queue_obj.task_done()   # TODO: task done even if detail_response=None?
+            queue_obj.task_done()
         return True
 
     def run(self):
@@ -224,6 +228,8 @@ class WebScraper:
         # Initialize proxies:
         self._get_proxies()
 
+        # Initialize page:
+        pre_page_scrap_time = time.time()
         current_page = self.start_page if self.start_page is not None else 0
 
         while not self._exit:
@@ -256,7 +262,7 @@ class WebScraper:
 
                 # Select number workers:
                 # num_available_cpus = multiprocessing.cpu_count() - 1
-                num_available_cpus = 10
+                num_available_cpus = self._max_number_threads
                 if len(self.proxies) < num_available_cpus:
                     number_workers = len(self.proxies)
                 else:
@@ -270,11 +276,22 @@ class WebScraper:
                 self._logger.set_message(level="INFO",
                                          message_level="COMMENT",
                                          message=f"Page {current_page}: announcements to read: {queue_size}")
+                pre_details_scrap_time = time.time()
                 for index in range(number_workers):
                     threading.Thread(target=self._get_detail_data,
                                      args=(index, queue_obj, current_page),
                                      daemon=True).start()
                 queue_obj.join()
+
+                # Log timing stats:
+                page_scrap_time = time.time() - pre_page_scrap_time
+                details_scrap_time = time.time() - pre_details_scrap_time
+                self._logger.set_message(level="INFO",
+                                         message_level="COMMENT",
+                                         message=f"Page {current_page}: timing statistics:"
+                                                 f"\n\t\tTotal announcements: {queue_size}"
+                                                 f"\n\t\tComplete page scrapping (seconds): {page_scrap_time}"
+                                                 f"\n\t\tOnly page details scrapping (seconds): {details_scrap_time}")
 
                 # Save results on database:
                 data_extractor_obj = DataExtractor(files_directory=self.outputs_folder + f"/page_{str(current_page)}",
@@ -282,6 +299,7 @@ class WebScraper:
                 data_extractor_obj.run()
 
                 # Increment page number:
+                pre_page_scrap_time = time.time()
                 current_page += 1
             else:
                 # TODO: how to deal with NONEs - not scraped information?
@@ -333,7 +351,7 @@ class WebScraper:
 
 if __name__ == "__main__":
     # web_scraper = WebScraper(execution_time=7200, start_page=0, logger_level='DEBUG')
-    web_scraper = WebScraper(start_page=0, end_page=8000, logger_level='INFO')
+    web_scraper = WebScraper(start_page=1000, end_page=3000, logger_level='INFO')
     web_scraper.run()
 
 """

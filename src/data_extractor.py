@@ -30,9 +30,7 @@ class DataExtractor:
                  logger_level="INFO"):
         self._logger_level = logger_level
         self.inputs_folder = files_directory
-        self.outputs_folder = self.inputs_folder + "/jsons/"
-        self._search_files_pattern = self.inputs_folder + "/**/page_*.json"
-        self._detail_files_pattern = None
+        # self.outputs_folder = self.inputs_folder + "/jsons/"
 
         self._cochesNet_data = CochesNetData()
 
@@ -84,7 +82,7 @@ class DataExtractor:
         new_sellers = 0
 
         # Read pages JSONs:
-        json_searchs_paths = DirectoryOperations.find_files_using_pattern(self._search_files_pattern)
+        json_searchs_paths = DirectoryOperations.find_files_using_pattern(self.inputs_folder + "*.json")
 
         # Read search data:
         for json_search_path in json_searchs_paths:
@@ -181,9 +179,9 @@ class DataExtractor:
         self._logger.set_message(level="INFO",
                                  message_level="COMMENT",
                                  message=f"Data extractor summary:"
-                                         f"\n\tNew announcements: {new_announcements}"
-                                         f"\n\tNew vehicles: {new_vehicles}"
-                                         f"\n\tNew sellers: {new_sellers}")
+                                         f"\n\t\tNew announcements: {new_announcements}"
+                                         f"\n\t\tNew vehicles: {new_vehicles}"
+                                         f"\n\t\tNew sellers: {new_sellers}")
 
     def old_run(self):
         number_rows_read = 0
@@ -254,6 +252,6 @@ class DataExtractor:
 
 
 if __name__ == "__main__":
-    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1672601112", logger_level='DEBUG')
-    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/", logger_level='INFO')
+    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1676759757/page_1001", logger_level='DEBUG')
+    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
     data_extractor.run()
