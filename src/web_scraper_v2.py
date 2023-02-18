@@ -42,6 +42,7 @@ class WebScraper:
         self._max_number_threads = 10
         self._exit = False
         self._proxies_finder = False
+        self._page_scrapped_details = 0
 
         # Set web to scrap:
         self._page_api = CochesNetAPI()
@@ -71,6 +72,7 @@ class WebScraper:
                               level=self._logger_level)
 
     def _get_proxies(self):
+        # TODO: implement continuous proxies reading
         if not self._proxies_finder:
             self._logger.set_message(level="INFO",
                                      message_level="SUBSECTION",
@@ -205,8 +207,8 @@ class WebScraper:
 
             request_params = self._page_api.get_request_announcement(announcement=announcement)
             try:
-
                 detail_response = self._get_url_content(request_params=request_params, url_reference=announcement_id)
+                self._page_scrapped_details += 1
             except Exception as exception:
                 self._logger.set_message(level="ERROR",
                                          message_level="MESSAGE",
@@ -277,6 +279,7 @@ class WebScraper:
                                          message_level="COMMENT",
                                          message=f"Page {current_page}: announcements to read: {queue_size}")
                 pre_details_scrap_time = time.time()
+                self._page_scrapped_details = 0
                 for index in range(number_workers):
                     threading.Thread(target=self._get_detail_data,
                                      args=(index, queue_obj, current_page),
@@ -289,7 +292,7 @@ class WebScraper:
                 self._logger.set_message(level="INFO",
                                          message_level="COMMENT",
                                          message=f"Page {current_page}: timing statistics:"
-                                                 f"\n\t\tTotal announcements: {queue_size}"
+                                                 f"\n\t\tTotal announcements: {self._page_scrapped_details}"
                                                  f"\n\t\tComplete page scrapping (seconds): {page_scrap_time}"
                                                  f"\n\t\tOnly page details scrapping (seconds): {details_scrap_time}")
 
@@ -302,7 +305,6 @@ class WebScraper:
                 pre_page_scrap_time = time.time()
                 current_page += 1
             else:
-                # TODO: how to deal with NONEs - not scraped information?
                 time.sleep(self._proxies_wait_time)
 
             # Finish iterations is elapsed time is greater than maximum execution time:
@@ -351,7 +353,7 @@ class WebScraper:
 
 if __name__ == "__main__":
     # web_scraper = WebScraper(execution_time=7200, start_page=0, logger_level='DEBUG')
-    web_scraper = WebScraper(start_page=1000, end_page=3000, logger_level='INFO')
+    web_scraper = WebScraper(start_page=500, end_page=3000, logger_level='INFO')
     web_scraper.run()
 
 """
