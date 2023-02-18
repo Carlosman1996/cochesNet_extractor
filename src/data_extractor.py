@@ -11,6 +11,7 @@ from src.logger import Logger
 from src.utils import FileOperations
 from src.utils import DirectoryOperations
 from src.utils import JSONFileOperations
+from src.utils import ROOT_PATH
 from src.cochesNet_api import CochesNetData
 from src.repository import Repository
 
@@ -21,9 +22,6 @@ TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_colwidth', None)
-
-
-ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))))
 
 
 class DataExtractor:

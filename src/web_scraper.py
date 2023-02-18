@@ -11,7 +11,7 @@ import pandas as pd
 
 from src.logger import Logger
 from src.utils import FileOperations
-from src.utils import DataframeOperations
+from src.utils import ROOT_PATH
 from src.utils import JSONFileOperations
 from src.proxies_finder import ProxiesFinder
 from src.postman import Postman
@@ -21,7 +21,6 @@ from src.repository import Repository
 TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 
 random.seed(datetime.now().timestamp())
-ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))))
 
 
 class WebScraper:

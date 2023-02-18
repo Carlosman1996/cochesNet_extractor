@@ -34,7 +34,7 @@ class ProxiesFinder:
                  check_proxies: bool = True):
 
         self._base_url = "https://free-proxy-list.net/"
-        self._check_timeout = 3
+        self._check_timeout = 1
         self._check_url = "https://www.coches.net/"
         self._proxy_table_indexes = {
             0: "IP_Address",

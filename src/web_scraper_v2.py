@@ -11,22 +11,21 @@ import pandas as pd
 
 from src.logger import Logger
 from src.utils import FileOperations
-from src.utils import DataframeOperations
+from src.utils import ROOT_PATH
 from src.utils import JSONFileOperations
 from src.proxies_finder import ProxiesFinder
 from src.postman import Postman
 from src.cochesNet_api import CochesNetAPI
 from src.repository import Repository
+from src.data_extractor import DataExtractor
 
 TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 
 random.seed(datetime.now().timestamp())
-ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))))
-
 
 class WebScraper:
     def __init__(self,
-                 execution_time: int = 3600,  # 30 minutes
+                 execution_time: int = None,  # 30 minutes
                  start_page: int = None,
                  end_page: int = None,
                  logger_level="INFO"):
@@ -41,6 +40,7 @@ class WebScraper:
         self._scrapping_wait_time = 0
         self._number_api_retries = 10
         self._exit = False
+        self._proxies_finder = False
 
         # Set web to scrap:
         self._page_api = CochesNetAPI()
@@ -70,18 +70,24 @@ class WebScraper:
                               level=self._logger_level)
 
     def _get_proxies(self):
-        self._logger.set_message(level="INFO",
-                                 message_level="SUBSECTION",
-                                 message="Read proxies")
+        if not self._proxies_finder:
+            self._logger.set_message(level="INFO",
+                                     message_level="SUBSECTION",
+                                     message="Read proxies")
+            self._proxies_finder = True
 
-        proxies_finder = ProxiesFinder(anonymity_filter=[1, 2])
-        proxies_finder.get_proxies()
-        self.proxies = proxies_finder.proxies_list
-        self._proxies_df = proxies_finder.proxies_df
+            proxies_finder = ProxiesFinder(anonymity_filter=[1, 2])
+            proxies_finder.get_proxies()
+            self.proxies = proxies_finder.proxies_list
+            self._proxies_df = proxies_finder.proxies_df
+            self._proxies_finder = False
 
-        self._logger.set_message(level="INFO",
-                                 message_level="MESSAGE",
-                                 message=f"Number of available proxies: {str(len(self.proxies))}")
+            self._logger.set_message(level="INFO",
+                                     message_level="MESSAGE",
+                                     message=f"Number of available proxies: {str(len(self.proxies))}")
+        else:
+            while not self._proxies_finder:
+                time.sleep(1)
 
         number_proxies = len(self.proxies)
         if number_proxies == 0:
@@ -174,13 +180,14 @@ class WebScraper:
         return response_content
 
     def _check_elapsed_time(self):
-        elapsed_time = self._get_elapsed_time()
-        if elapsed_time > self._execution_time:
-            self._logger.set_message(level="INFO",
-                                     message_level="MESSAGE",
-                                     message=f"Finished iterating in: {str(int(elapsed_time))} seconds: "
-                                             f"TIME ending")
-            return True
+        if self._execution_time is not None:
+            elapsed_time = self._get_elapsed_time()
+            if elapsed_time > self._execution_time:
+                self._logger.set_message(level="INFO",
+                                         message_level="MESSAGE",
+                                         message=f"Finished iterating in: {str(int(elapsed_time))} seconds: "
+                                                 f"TIME ending")
+                return True
         return False
 
     def _get_detail_data(self, index_worker: int, queue_obj: queue, current_page: int):
@@ -269,6 +276,11 @@ class WebScraper:
                                      daemon=True).start()
                 queue_obj.join()
 
+                # Save results on database:
+                data_extractor_obj = DataExtractor(files_directory=self.outputs_folder + f"/page_{str(current_page)}",
+                                                   logger_level='INFO')
+                data_extractor_obj.run()
+
                 # Increment page number:
                 current_page += 1
             else:
@@ -320,7 +332,8 @@ class WebScraper:
 
 
 if __name__ == "__main__":
-    web_scraper = WebScraper(execution_time=3600, start_page=0, logger_level='DEBUG')
+    # web_scraper = WebScraper(execution_time=7200, start_page=0, logger_level='DEBUG')
+    web_scraper = WebScraper(start_page=0, end_page=8000, logger_level='INFO')
     web_scraper.run()
 
 """

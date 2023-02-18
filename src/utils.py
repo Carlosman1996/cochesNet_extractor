@@ -14,7 +14,7 @@ from sqlite3 import Error
 __author__ = "Carlos Manuel Molina Sotoca"
 __email__ = "cmmolinas01@gmail.com"
 
-ROOT_PATH = str(Path(os.path.dirname(os.path.realpath(__file__))).parent)
+ROOT_PATH = str(Path(__file__).parent.parent.resolve())
 
 
 class PrintColors(enum.Enum):
