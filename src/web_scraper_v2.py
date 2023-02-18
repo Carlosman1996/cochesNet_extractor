@@ -144,21 +144,21 @@ class WebScraper:
                     self._logger.set_message(level="DEBUG",
                                              message_level="MESSAGE",
                                              message=f"Response HTTP Response Body: KO - forbidden: {url_reference} BOT detection"
-                                                     f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
+                                                     f" - PROXY:\n{proxy}")
                     self._delete_proxies(proxy=proxy)
                     iteration += 1
                 elif "You don't have permission to access /vpns/ on this server." in response_content:
                     self._logger.set_message(level="DEBUG",
                                              message_level="MESSAGE",
                                              message=f"Response HTTP Response Body: KO - forbidden: {url_reference} LOCATION detection"
-                                                     f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
+                                                     f" - PROXY:\n{proxy}")
                     self._delete_proxies(proxy=proxy)
                     iteration += 1
                 else:
                     self._logger.set_message(level="DEBUG",
                                              message_level="MESSAGE",
                                              message=f"Response HTTP Response Body: OK - {url_reference}"
-                                                     f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
+                                                     f" - PROXY:\n{proxy}")
                     # time.sleep(30)    # TODO: freeze proxy IP during certain time - SLEEP
                     # _set_proxy_to_delete(proxy)     # TODO: freeze proxy IP during certain time - REMOVE to avoid BOT
                     break
@@ -166,7 +166,7 @@ class WebScraper:
                 self._logger.set_message(level="DEBUG",
                                          message_level="MESSAGE",
                                          message=f"Response HTTP Response Body: KO - failed: {url_reference}\n{str(exception)}\n"
-                                                 f" - PROXY:\n{self._proxies_df.iloc[self.proxies.index(proxy)]}")
+                                                 f" - PROXY:\n{proxy}")
                 # Remove not valid proxies:
                 self._delete_proxies(proxy=proxy)
                 iteration += 1
@@ -195,7 +195,14 @@ class WebScraper:
                                              f"TID: {threading.get_ident()}")
 
             request_params = self._page_api.get_request_announcement(announcement=announcement)
-            detail_response = self._get_url_content(request_params=request_params, url_reference=announcement_id)
+            try:
+                detail_response = self._get_url_content(request_params=request_params, url_reference=announcement_id)
+            except Exception as exception:
+                self._logger.set_message(level="ERROR",
+                                         message_level="MESSAGE",
+                                         message=f"ERROR reading page detail: {announcement_id}\n{str(exception)}")
+                detail_response = None
+
             # TODO: how to deal with NONEs - not scraped information?
             if detail_response is not None:
                 self._save_detail_results(page=current_page, detail=announcement_id, result=detail_response)
@@ -241,7 +248,8 @@ class WebScraper:
                         queue_obj.put(announcement)
 
                 # Select number workers:
-                num_available_cpus = multiprocessing.cpu_count() - 1
+                # num_available_cpus = multiprocessing.cpu_count() - 1
+                num_available_cpus = 10
                 if len(self.proxies) < num_available_cpus:
                     number_workers = len(self.proxies)
                 else:
@@ -312,7 +320,7 @@ class WebScraper:
 
 
 if __name__ == "__main__":
-    web_scraper = WebScraper(execution_time=3600, start_page=32, logger_level='DEBUG')
+    web_scraper = WebScraper(execution_time=3600, start_page=0, logger_level='DEBUG')
     web_scraper.run()
 
 """
