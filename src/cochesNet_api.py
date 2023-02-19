@@ -185,6 +185,7 @@ class CochesNetData:
             "IS_CERTIFIED": self._get_model_value(web_data, ["detail", "ad", "vehicle", "isCertified"]),
             "IS_PROFESSIONAL": True if self._get_model_value(web_data, ["detail", "ad", "professionalSeller", "id"]) is not None else False,
             "HAS_URGE": self._get_model_value(web_data, ["search", "hasUrge"]),
+            # "COUNTRY": "Spain",
             "PROVINCE": self._get_model_value(web_data, ["search", "mainProvince"]),
             "AD_CREATION_DATE": self._get_model_value(web_data, ["detail", "ad", "creationDate"]),
             "AD_PUBLISHED_DATE": self._get_model_value(web_data, ["detail", "ad", "publicationDate"]),
@@ -230,6 +231,7 @@ class CochesNetData:
         return {
             "NAME": self._get_model_value(web_data, ["detail", "professionalSeller", "name"]),
             "PAGE_URL": self._get_model_value(web_data, ["detail", "professionalSeller", "externalPageUrl"]),
+            # "COUNTRY": "Spain",
             "PROVINCE": self._get_model_value(web_data, ["detail", "professionalSeller", "location", "province"]),
             "ZIP_CODE": self._get_model_value(web_data, ["detail", "professionalSeller", "location", "zipCode"]),
             "CREATED_DATE": web_data["scraped_date"],

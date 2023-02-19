@@ -55,7 +55,7 @@ class Logger:
         elif message_level == "SUBSECTION":
             message = f"\n ---------- {message} ----------\n"
         else:
-            message = f"\n\t {message}\n"
+            message = f"\n {message}\n"
 
         # Write message:
         if level == "DEBUG":

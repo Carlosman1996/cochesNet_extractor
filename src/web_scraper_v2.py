@@ -94,7 +94,10 @@ class WebScraper:
 
         number_proxies = len(self.proxies)
         if number_proxies == 0:
-            raise Exception("There is any proxy available. EXECUTION ENDS.")
+            self._logger.set_message(level="INFO",
+                                     message_level="MESSAGE",
+                                     message=f"There is any proxy available. Sleep 10 minutes-")
+            time.sleep(600)
 
     def _get_elapsed_time(self) -> float:
         # Check execution time:
@@ -292,9 +295,9 @@ class WebScraper:
                 self._logger.set_message(level="INFO",
                                          message_level="COMMENT",
                                          message=f"Page {current_page}: timing statistics:"
-                                                 f"\n\t\tTotal announcements: {self._page_scrapped_details}"
-                                                 f"\n\t\tComplete page scrapping (seconds): {page_scrap_time}"
-                                                 f"\n\t\tOnly page details scrapping (seconds): {details_scrap_time}")
+                                                 f"\n\tTotal announcements: {self._page_scrapped_details}"
+                                                 f"\n\tComplete page scrapping (seconds): {page_scrap_time}"
+                                                 f"\n\tOnly page details scrapping (seconds): {details_scrap_time}")
 
                 # Save results on database:
                 data_extractor_obj = DataExtractor(files_directory=self.outputs_folder + f"/page_{str(current_page)}",
@@ -353,7 +356,7 @@ class WebScraper:
 
 if __name__ == "__main__":
     # web_scraper = WebScraper(execution_time=7200, start_page=0, logger_level='DEBUG')
-    web_scraper = WebScraper(start_page=500, end_page=3000, logger_level='INFO')
+    web_scraper = WebScraper(start_page=319, end_page=3000, logger_level='INFO')
     web_scraper.run()
 
 """

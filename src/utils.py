@@ -10,11 +10,13 @@ import enum
 import pandas as pd
 import sqlite3
 from sqlite3 import Error
+import zoneinfo
 
 __author__ = "Carlos Manuel Molina Sotoca"
 __email__ = "cmmolinas01@gmail.com"
 
 ROOT_PATH = str(Path(__file__).parent.parent.resolve())
+TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 
 
 class PrintColors(enum.Enum):

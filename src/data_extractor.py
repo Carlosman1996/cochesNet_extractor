@@ -87,15 +87,20 @@ class DataExtractor:
         # Read search data:
         for json_search_path in json_searchs_paths:
             try:
+                json_search_path = os.path.normpath(json_search_path)
                 search_data_file = JSONFileOperations.read_file(json_search_path)
+
+                # Read execution folder:
+                execution_folder = json_search_path.split(os.sep)[-2]
 
                 # Read page number:
                 search_file_name = os.path.basename(json_search_path)
-                page = os.path.splitext(search_file_name)[0].replace("page_", "")
+                search_file_split = os.path.splitext(search_file_name)
+                page = search_file_split[0].replace("page_", "")
 
                 self._logger.set_message(level="INFO",
                                          message_level="SUBSECTION",
-                                         message=f"Extract data from page: {page}")
+                                         message=f"Folder {execution_folder}: Page: {page}")
 
                 # Read details JSONs:
                 search_details_folder = json_search_path.split(".")[0]
@@ -120,7 +125,8 @@ class DataExtractor:
 
                         self._logger.set_message(level="DEBUG",
                                                  message_level="COMMENT",
-                                                 message=f"Extract data from detail: page {page} - detail {detail}")
+                                                 message=f"Folder {execution_folder}:\n\tExtract data from detail: "
+                                                         f"page {page} - detail {detail}")
 
                         # Pre-extraction data:
                         scrapped_data = {
@@ -168,20 +174,20 @@ class DataExtractor:
                             Repository.insert_json("ANNOUNCEMENT", announcement_db_data)
                             new_announcements += 1
                     except Exception as exception:
-                        self._logger.set_message(level="DEBUG",
+                        self._logger.set_message(level="ERROR",
                                                  message_level="COMMENT",
                                                  message=f"Exception in detail data processing: {str(exception)}")
             except Exception as exception:
-                self._logger.set_message(level="DEBUG",
+                self._logger.set_message(level="ERROR",
                                          message_level="COMMENT",
                                          message=f"Exception in search data processing: {str(exception)}")
 
         self._logger.set_message(level="INFO",
                                  message_level="COMMENT",
                                  message=f"Data extractor summary:"
-                                         f"\n\t\tNew announcements: {new_announcements}"
-                                         f"\n\t\tNew vehicles: {new_vehicles}"
-                                         f"\n\t\tNew sellers: {new_sellers}")
+                                         f"\n\tNew announcements: {new_announcements}"
+                                         f"\n\tNew vehicles: {new_vehicles}"
+                                         f"\n\tNew sellers: {new_sellers}")
 
     def old_run(self):
         number_rows_read = 0
@@ -252,6 +258,6 @@ class DataExtractor:
 
 
 if __name__ == "__main__":
-    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1676759757/page_1001", logger_level='DEBUG')
-    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
+    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1676822428/", logger_level='INFO')
+    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
     data_extractor.run()

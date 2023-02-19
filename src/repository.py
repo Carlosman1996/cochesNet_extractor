@@ -82,6 +82,7 @@ class Queries:
             IS_CERTIFIED numeric,
             IS_PROFESSIONAL numeric,
             HAS_URGE numeric,
+            COUNTRY text,
             PROVINCE text,
             AD_CREATION_DATE numeric,
             AD_PUBLISHED_DATE numeric,
@@ -89,15 +90,16 @@ class Queries:
             SELLER_ID integer,
             CREATED_DATE numeric NOT NULL,
             CREATED_USER numeric NOT NULL,
-            ANNOUNCEMENT blob
+            FOREIGN KEY(VEHICLE_ID) REFERENCES VEHICLE(ID),
+            FOREIGN KEY(SELLER_ID) REFERENCES SELLER(ID)
         );
     """
 
     statisticars_vehicle_table_query = """
         CREATE TABLE IF NOT EXISTS VEHICLE (
             ID integer PRIMARY KEY AUTOINCREMENT,
-            MAKE text NOT NULL,
-            MODEL text NOT NULL,
+            MAKE text,
+            MODEL text,
             VERSION text,
             YEAR integer,
             HORSE_POWER integer,
@@ -131,6 +133,7 @@ class Queries:
             ID integer PRIMARY KEY AUTOINCREMENT,
             NAME text NOT NULL,
             PAGE_URL text,
+            COUNTRY text,
             PROVINCE text,
             ZIP_CODE text,
             CREATED_DATE numeric NOT NULL,
