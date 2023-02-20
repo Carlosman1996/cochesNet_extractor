@@ -36,10 +36,11 @@ class WebScraper:
         self._proxies_df = pd.DataFrame
         self.outputs_folder = ROOT_PATH + "/outputs/" + str(int(datetime.now().timestamp()))
         self._logger_level = logger_level
-        self._proxies_wait_time = 0
-        self._scrapping_wait_time = 0
+        self._proxies_wait_time = 1
+        self._scrapping_wait_time = 1
+        self._proxies_sleep_time = 600
         self._number_api_retries = 10
-        self._max_number_threads = 10
+        self._max_number_threads = 3
         self._exit = False
         self._proxies_finder = False
         self._page_scrapped_details = 0
@@ -73,12 +74,15 @@ class WebScraper:
 
     def _get_proxies(self):
         # TODO: implement continuous proxies reading
+        # TODO: lock proxies when they are used
         if not self._proxies_finder:
             self._logger.set_message(level="INFO",
                                      message_level="SUBSECTION",
                                      message="Read proxies")
             self._proxies_finder = True
 
+            # proxies_finder = ProxiesFinder(anonymity_filter=[1, 2],
+            #                                codes_filter=["US", "DE", "FR", "ES", "UK"])
             proxies_finder = ProxiesFinder(anonymity_filter=[1, 2])
             proxies_finder.get_proxies()
             self.proxies = proxies_finder.proxies_list
@@ -90,14 +94,14 @@ class WebScraper:
                                      message=f"Number of available proxies: {str(len(self.proxies))}")
         else:
             while not self._proxies_finder:
-                time.sleep(1)
+                time.sleep(self._proxies_wait_time)
 
         number_proxies = len(self.proxies)
         if number_proxies == 0:
             self._logger.set_message(level="INFO",
                                      message_level="MESSAGE",
                                      message=f"There is any proxy available. Sleep 10 minutes-")
-            time.sleep(600)
+            time.sleep(self._proxies_sleep_time)
 
     def _get_elapsed_time(self) -> float:
         # Check execution time:
@@ -307,8 +311,6 @@ class WebScraper:
                 # Increment page number:
                 pre_page_scrap_time = time.time()
                 current_page += 1
-            else:
-                time.sleep(self._proxies_wait_time)
 
             # Finish iterations is elapsed time is greater than maximum execution time:
             if self._check_elapsed_time():
@@ -356,7 +358,7 @@ class WebScraper:
 
 if __name__ == "__main__":
     # web_scraper = WebScraper(execution_time=7200, start_page=0, logger_level='DEBUG')
-    web_scraper = WebScraper(start_page=319, end_page=3000, logger_level='INFO')
+    web_scraper = WebScraper(start_page=368, end_page=3000, logger_level='INFO')
     web_scraper.run()
 
 """

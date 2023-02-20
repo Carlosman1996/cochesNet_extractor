@@ -1,5 +1,6 @@
 from src.proxies_page import FreeProxyListPage
 from src.proxies_page import FreeProxyCzPage
+from src.proxies_page import GeonodePage
 import pandas as pd
 import warnings
 from src.postman import Postman
@@ -25,6 +26,7 @@ class ProxiesFinder:
         self._check_url = "https://www.coches.net/"
         self.freeProxyList_page = FreeProxyListPage()
         self.freeProxyCz_page = FreeProxyCzPage()
+        self.geonode_page = GeonodePage()
 
         self.proxies_df = pd.DataFrame()
         self.proxies_list = []
@@ -54,7 +56,7 @@ class ProxiesFinder:
 
         # Get proxies:
         proxies_df = self.freeProxyList_page.get_proxies(proxies_df, self.max_size)
-        # proxies_df = self.freeProxyCz_page.get_proxies(proxies_df, self.max_size)
+        # proxies_df = self.geonode_page.get_proxies(proxies_df, self.max_size)
 
         # Filter proxies:
         if self.countries_filter is not None and not proxies_df.empty:
@@ -79,6 +81,6 @@ class ProxiesFinder:
 
 
 if __name__ == "__main__":
-    px_finder_obj = ProxiesFinder(anonymity_filter=[1, 2], max_size=50)
+    px_finder_obj = ProxiesFinder(anonymity_filter=[1, 2])
     result = px_finder_obj.get_proxies()
     print(result)

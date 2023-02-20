@@ -47,13 +47,13 @@ class Common:
                 return False
 
         if type == "Protocol":
-            if value == "HTTPS":
+            if value == "HTTPS" or value == "https":
                 return True
             else:
                 return False
 
         if type == "Anonymity":
-            if value == "elite proxy" or value == "Alto anonimato" or value == "Elite":
+            if value == "elite proxy" or value == "elite" or value == "Alto anonimato" or value == "Elite":
                 return Anonymity.ELITE.value
             elif value == "transparent" or value == "Transparente":
                 return Anonymity.TRANSPARENT.value
@@ -101,6 +101,53 @@ class FreeProxyListPage(Common):
             proxy_model["created_date"] = datetime.datetime.now(TIMEZONE_MADRID)
             proxy_model["Anonymity"] = Common.type_converter(proxy_model["Anonymity"], type="Anonymity")
             proxy_model["Https"] = Common.type_converter(proxy_model["Https"], type="affirmation")
+
+            # Save data on dataframe
+            proxy_model_df = pd.DataFrame([proxy_model])
+            proxies_df = pd.concat([proxies_df, proxy_model_df], ignore_index=True)
+
+            # Check iteration number:
+            iteration += 1
+            if iteration == max_size:
+                break
+        return proxies_df
+
+
+class GeonodePage(Common):
+    def __init__(self):
+        # TODO: apply filters in request
+        self.url = "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc&protocols=http%2Chttps&anonymityLevel=elite&anonymityLevel=anonymous"
+        self._proxy_table_indexes = {
+            "ip": "IP_Address",
+            "port": "Port",
+            "country": "Code",
+            "country": "Country",
+            "anonymityLevel": "Anonymity",
+            "google": "Google",
+            "protocols": "Https",
+            "lastChecked": "Last_Checked"
+        }
+
+    def get_proxies(self, proxies_df: pd.DataFrame(), max_size: int = None) -> dict:
+
+        # Get Free Proxy HTML:
+        response = Postman.send_request(method='GET',
+                                        url=self.url,
+                                        status_code_check=200)
+        response_data = response.json()
+
+        # Iterate over proxies:
+        iteration = 0
+        for proxy in response_data["data"]:
+            proxy_model = Common.PROXY_MODEL.copy()
+
+            for key, value in proxy.items():
+                if key in self._proxy_table_indexes.keys():
+                    proxy_model[self._proxy_table_indexes[key]] = value
+            proxy_model["proxy"] = proxy_model["IP_Address"] + ":" + proxy_model["Port"]
+            proxy_model["created_date"] = datetime.datetime.now(TIMEZONE_MADRID)
+            proxy_model["Anonymity"] = Common.type_converter(proxy_model["Anonymity"], type="Anonymity")
+            proxy_model["Https"] = Common.type_converter(proxy_model["Https"][0], type="Protocol")   # TODO: find element in list
 
             # Save data on dataframe
             proxy_model_df = pd.DataFrame([proxy_model])
