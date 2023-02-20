@@ -32,7 +32,7 @@ class CochesNetAPIData:
             },
             "sort": {
                 "order": "desc",
-                "term": "year"
+                "term": "relevance"
             },
             "filters": {
                 "isFinanced": False,

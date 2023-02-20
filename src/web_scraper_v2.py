@@ -358,7 +358,7 @@ class WebScraper:
 
 if __name__ == "__main__":
     # web_scraper = WebScraper(execution_time=7200, start_page=0, logger_level='DEBUG')
-    web_scraper = WebScraper(start_page=368, end_page=3000, logger_level='INFO')
+    web_scraper = WebScraper(start_page=0, end_page=3000, logger_level='INFO')
     web_scraper.run()
 
 """
