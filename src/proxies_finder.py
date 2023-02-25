@@ -1,12 +1,14 @@
 from src.proxies_page import FreeProxyListPage
 from src.proxies_page import FreeProxyCzPage
 from src.proxies_page import GeonodePage
+from src.proxies_page import Common
 import pandas as pd
 import warnings
 from src.postman import Postman
+import dask.dataframe as dd
+from utils import Timer
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
-
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -24,11 +26,12 @@ class ProxiesFinder:
 
         self._check_timeout = 1
         self._check_url = "https://www.coches.net/"
+        self._max_number_threads = 10
         self.freeProxyList_page = FreeProxyListPage()
         self.freeProxyCz_page = FreeProxyCzPage()
         self.geonode_page = GeonodePage()
 
-        self.proxies_df = pd.DataFrame()
+        self.proxies_df = pd.DataFrame(columns=Common.PROXY_MODEL.keys())
         self.proxies_list = []
 
         # Set variables:
@@ -50,13 +53,14 @@ class ProxiesFinder:
             return False
         return True
 
+    @Timer(text="Proxies found in {:.2f} seconds")
     def get_proxies(self) -> list:
         # Initialize parameters:
         proxies_df = self.proxies_df.copy()
 
         # Get proxies:
-        proxies_df = self.freeProxyList_page.get_proxies(proxies_df, self.max_size)
-        # proxies_df = self.geonode_page.get_proxies(proxies_df, self.max_size)
+        proxies_df = self.freeProxyList_page.get_proxies(proxies_df)
+        proxies_df = self.geonode_page.get_proxies(proxies_df)
 
         # Filter proxies:
         if self.countries_filter is not None and not proxies_df.empty:
@@ -69,9 +73,20 @@ class ProxiesFinder:
             proxies_df = proxies_df[proxies_df['Https'] == self.https_filter]
 
         if not proxies_df.empty:
+            # Apply max. size filter:
+            if self.max_size is not None:
+                proxies_df = proxies_df[:self.max_size]
+
             # Remove unavailable proxies:
-            proxies_df["available"] = \
-                proxies_df["proxy"].apply(lambda proxy: self._check_proxy(proxy=proxy) if self.check_proxies else True)
+            print(len(proxies_df))
+            if self.check_proxies:
+                proxies_df["available"] = dd.from_pandas(proxies_df["proxy"], npartitions=self._max_number_threads) \
+                    .map_partitions(
+                    lambda dframe: dframe.apply(lambda row: self._check_proxy(proxy=row) if (pd.notnull(row)) else row)).compute(
+                    scheduler='threads')
+
+            else:
+                proxies_df["available"] = None
 
             # Set proxies return variables:
             self.proxies_df = proxies_df[proxies_df["available"] == True].reset_index(drop=True)
@@ -82,5 +97,24 @@ class ProxiesFinder:
 
 if __name__ == "__main__":
     px_finder_obj = ProxiesFinder(anonymity_filter=[1, 2])
+
+    # EXEC 1:
+    print("\n1 threads")
+    px_finder_obj._max_number_threads = 1
     result = px_finder_obj.get_proxies()
     print(result)
+    print(len(result))
+
+    # EXEC 2:
+    print("\n10 threads")
+    px_finder_obj._max_number_threads = 10
+    result = px_finder_obj.get_proxies()
+    print(result)
+    print(len(result))
+
+    # EXEC 3:
+    print("\n20 threads")
+    px_finder_obj._max_number_threads = 20
+    result = px_finder_obj.get_proxies()
+    print(result)
+    print(len(result))
