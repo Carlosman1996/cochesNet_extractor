@@ -6,7 +6,7 @@ import pandas as pd
 import warnings
 from src.postman import Postman
 import dask.dataframe as dd
-from utils import Timer
+from src.utils import Timer
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -24,7 +24,7 @@ class ProxiesFinder:
                  max_size: int = None,
                  check_proxies: bool = True):
 
-        self._check_timeout = 1
+        self._check_timeout = 2
         self._check_url = "https://www.coches.net/"
         self._max_number_threads = 10
         self.freeProxyList_page = FreeProxyListPage()
@@ -53,7 +53,7 @@ class ProxiesFinder:
             return False
         return True
 
-    @Timer(text="Proxies found in {:.2f} seconds")
+    # @Timer(text="Proxies found in {:.2f} seconds")
     def get_proxies(self) -> list:
         # Initialize parameters:
         proxies_df = self.proxies_df.copy()
@@ -78,7 +78,6 @@ class ProxiesFinder:
                 proxies_df = proxies_df[:self.max_size]
 
             # Remove unavailable proxies:
-            print(len(proxies_df))
             if self.check_proxies:
                 proxies_df["available"] = dd.from_pandas(proxies_df["proxy"], npartitions=self._max_number_threads) \
                     .map_partitions(

@@ -13,6 +13,7 @@ from sqlite3 import Error
 import zoneinfo
 import functools
 import time
+import mariadb
 from dataclasses import dataclass, field
 from typing import Callable, ClassVar, Dict, Optional
 
@@ -262,7 +263,7 @@ class DataframeOperations:
 class DatabaseOperations:
 
     @staticmethod
-    def create_connection(db_file):
+    def create_connection_sqlite3(db_file):
         """ create a bbdd connection to the SQLite bbdd
             specified by db_file
         :param db_file: bbdd file
@@ -271,6 +272,23 @@ class DatabaseOperations:
         conn = None
         try:
             conn = sqlite3.connect(db_file)
+            return conn
+        except Error as e:
+            print(e)
+
+        return conn
+
+    @staticmethod
+    def create_connection_mariadb():
+        conn = None
+        try:
+            conn = mariadb.connect(
+                user="ordillan",
+                password="6065",
+                host="localhost",
+                port=3306,
+                database="STATISTICARS"
+            )
             return conn
         except Error as e:
             print(e)
