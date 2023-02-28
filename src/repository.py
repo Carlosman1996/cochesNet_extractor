@@ -260,6 +260,21 @@ class Queries:
         """
 
     @staticmethod
+    def create_statisticars_select_announcement_duplicated_query(title,
+                                                                 vehicle_year,
+                                                                 vehicle_km,
+                                                                 price,
+                                                                 announcer):
+        return f"""
+            SELECT ID FROM ANNOUNCEMENT
+            WHERE TITLE = '{title}'
+            AND VEHICLE_YEAR = {vehicle_year}
+            AND VEHICLE_KM = {vehicle_km}
+            AND PRICE = {price}
+            AND ANNOUNCER = '{announcer}';
+        """
+
+    @staticmethod
     def create_statisticars_select_vehicle_id_query(vehicle_make, vehicle_model, vehicle_version, vehicle_year):
         query = f"""
             SELECT ID FROM VEHICLE
@@ -359,6 +374,24 @@ class Repository(Queries):
 
         if conn is not None:
             query = Queries.create_statisticars_select_announcement_id_query(announcement_id, announcer)
+            data_ddbb = DatabaseOperations.select(conn, query)
+            return data_ddbb
+        else:
+            print("Error! Cannot create the bbdd connection.")
+            return None
+
+    @staticmethod
+    def get_announcement_duplicated(title, vehicle_year, vehicle_km, price, announcer):
+        # Create a bbdd connection
+        conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
+        # conn = DatabaseOperations.create_connection_mariadb()
+
+        if conn is not None:
+            query = Queries.create_statisticars_select_announcement_duplicated_query(title,
+                                                                                     vehicle_year,
+                                                                                     vehicle_km,
+                                                                                     price,
+                                                                                     announcer)
             data_ddbb = DatabaseOperations.select(conn, query)
             return data_ddbb
         else:

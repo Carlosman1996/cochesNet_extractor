@@ -31,7 +31,7 @@ class CochesNetAPIData:
                 "size": 100
             },
             "sort": {
-                "order": "desc",
+                "order": "asc",
                 "term": "relevance"
             },
             "filters": {
@@ -119,6 +119,14 @@ class CochesNetAPI(CochesNetAPIData):
 
     def get_announcement_id(self, annnouncement: dict) -> int:
         return annnouncement["id"]
+
+    def get_announcement_summary(self, annnouncement: dict) -> dict:
+        return {
+            "title": annnouncement["title"],
+            "vehicle_year": annnouncement["year"],
+            "vehicle_km": annnouncement["km"],
+            "price": annnouncement["price"]["amount"]
+        }
 
 
 class CochesNetData:

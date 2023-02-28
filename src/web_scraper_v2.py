@@ -36,7 +36,7 @@ class WebScraper:
         self._proxies_df = pd.DataFrame
         self.outputs_folder = ROOT_PATH + "/outputs/" + str(int(datetime.now().timestamp()))
         self._logger_level = logger_level
-        self._proxies_wait_time = 0
+        self._proxies_wait_time = 1
         self._scrapping_wait_time = 1
         self._proxies_sleep_time = 600
         self._number_api_retries = 10
@@ -262,10 +262,14 @@ class WebScraper:
 
                 # Read ID per announcement:
                 for number, announcement in enumerate(self._page_api.get_announcements(search_response)):
-                    announcement_id = self._page_api.get_announcement_id(announcement)
+                    announcement_summary = self._page_api.get_announcement_summary(announcement)
 
                     # If announcement is not on database, read the detail:
-                    equal_announcements = Repository.get_announcement_id(announcement_id, self._page_api.page_name)
+                    equal_announcements = Repository.get_announcement_duplicated(announcement_summary["title"],
+                                                                                 announcement_summary["vehicle_year"],
+                                                                                 announcement_summary["vehicle_km"],
+                                                                                 announcement_summary["price"],
+                                                                                 self._page_api.page_name)
                     if len(equal_announcements) == 0 or equal_announcements is None:
                         queue_obj.put(announcement)
 
