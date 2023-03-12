@@ -13,7 +13,7 @@ from sqlite3 import Error
 import zoneinfo
 import functools
 import time
-import mariadb
+# import mariadb
 from dataclasses import dataclass, field
 from typing import Callable, ClassVar, Dict, Optional
 

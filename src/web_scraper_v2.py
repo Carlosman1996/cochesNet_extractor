@@ -16,19 +16,21 @@ from src.utils import JSONFileOperations
 from src.proxies_finder import ProxiesFinder
 from src.postman import Postman
 from src.cochesNet_api import CochesNetAPI
-from src.repository import Repository
 from src.data_extractor import DataExtractor
+from src.data_extractor import Repository
 
 TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 
 random.seed(datetime.now().timestamp())
+
 
 class WebScraper:
     def __init__(self,
                  execution_time: int = None,  # 30 minutes
                  start_page: int = None,
                  end_page: int = None,
-                 logger_level="INFO"):
+                 logger_level="INFO",
+                 database: str = 'sqlite'):
         self._execution_time = execution_time
         self.start_page = start_page
         self.end_page = end_page
@@ -47,6 +49,9 @@ class WebScraper:
 
         # Set web to scrap:
         self._page_api = CochesNetAPI()
+
+        # TODO: remove - code duplicated in data extractor - NEW REPOSITORY
+        self._repository_obj = Repository(database)
 
         # Timing:
         self.start_time = time.time()
@@ -258,11 +263,11 @@ class WebScraper:
                     announcement_summary = self._page_api.get_announcement_summary(announcement)
 
                     # If announcement is not on database, read the detail:
-                    equal_announcements = Repository.get_announcement_duplicated(announcement_summary["title"],
-                                                                                 announcement_summary["vehicle_year"],
-                                                                                 announcement_summary["vehicle_km"],
-                                                                                 announcement_summary["price"],
-                                                                                 self._page_api.page_name)
+                    equal_announcements = self._repository_obj.get_announcement_duplicated(announcement_summary["title"],
+                                                                                           announcement_summary["vehicle_year"],
+                                                                                           announcement_summary["vehicle_km"],
+                                                                                           announcement_summary["price"],
+                                                                                           self._page_api.page_name)
                     # TODO: review available cars with 'asc' sort method in request
                     if len(equal_announcements) == 0 or equal_announcements is None:
                         queue_obj.put(announcement)
