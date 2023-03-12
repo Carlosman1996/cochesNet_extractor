@@ -13,6 +13,7 @@ from src.utils import DirectoryOperations
 from src.utils import JSONFileOperations
 from src.utils import ROOT_PATH
 from src.cochesNet_api import CochesNetData
+from src.cochesNet_api import CochesNetAPI
 from src.repository import Repository
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -27,14 +28,18 @@ pd.set_option('display.max_colwidth', None)
 class DataExtractor:
     def __init__(self,
                  files_directory: str,
+                 database: str = 'sqlite',
                  logger_level="INFO"):
         self._logger_level = logger_level
         self.inputs_folder = files_directory
         # self.outputs_folder = self.inputs_folder + "/jsons/"
 
+        # Set web to scrap:
+        self._page_api = CochesNetAPI()
         self._cochesNet_data = CochesNetData()
 
-        self.data_model = dict.fromkeys(Repository.main_table_columns, None)
+        self._repository_obj = Repository(database)
+        self.data_model = dict.fromkeys(self._repository_obj.main_table_columns, None)
         self.data_df = self._set_data_df()
         self._max_data_df_len = 5000
 
@@ -54,9 +59,8 @@ class DataExtractor:
         self._detail_files_pattern = f"{search_page}/detail_*.json"
         return self._detail_files_pattern
 
-    @staticmethod
-    def _set_data_df():
-        return pd.DataFrame(columns=Repository.main_table_columns)
+    def _set_data_df(self):
+        return pd.DataFrame(columns=self._repository_obj.main_table_columns)
 
     def _get_vehicle_main_data(self, detail_db_data):
         vehicle = copy.deepcopy(self.vehicle_main_data)
@@ -140,38 +144,43 @@ class DataExtractor:
                         vehicle_db_data = self._cochesNet_data.map_vehicle_data(scrapped_data)
                         seller_db_data = self._cochesNet_data.map_seller_data(scrapped_data)
 
-                        # Check data already exists:
-                        equal_announcements = Repository.get_announcement_id(announcement_db_data["ANNOUNCEMENT_ID"],
-                                                                             announcement_db_data["ANNOUNCER"])
+                        # # Check data already exists:
+                        # equal_announcements = self._repository_obj.get_announcement_id(announcement_db_data["ANNOUNCEMENT_ID"],
+                        #                                                      announcement_db_data["ANNOUNCER"])
+                        equal_announcements = self._repository_obj.get_announcement_duplicated(announcement_db_data["TITLE"],
+                                                                                     announcement_db_data["VEHICLE_YEAR"],
+                                                                                     announcement_db_data["VEHICLE_KM"],
+                                                                                     announcement_db_data["PRICE"],
+                                                                                     self._page_api.page_name)
                         if len(equal_announcements) == 0 or equal_announcements is None:
                             # Insert vehicle:
-                            vehicle = Repository.get_vehicle_id(vehicle_db_data["MAKE"],
+                            vehicle = self._repository_obj.get_vehicle_id(vehicle_db_data["MAKE"],
                                                                 vehicle_db_data["MODEL"],
                                                                 vehicle_db_data["VERSION"],
                                                                 vehicle_db_data["YEAR"])
                             if len(vehicle) == 0 or vehicle is None:
-                                Repository.insert_json("VEHICLE", vehicle_db_data)
+                                self._repository_obj.insert_json("VEHICLE", vehicle_db_data)
                                 new_vehicles += 1
-                                vehicle = Repository.get_vehicle_id(vehicle_db_data["MAKE"],
+                                vehicle = self._repository_obj.get_vehicle_id(vehicle_db_data["MAKE"],
                                                                     vehicle_db_data["MODEL"],
                                                                     vehicle_db_data["VERSION"],
                                                                     vehicle_db_data["YEAR"])
                             announcement_db_data["VEHICLE_ID"] = vehicle[0][0]
 
                             # Insert seller:
-                            seller = Repository.get_seller_id(seller_db_data["NAME"], seller_db_data["PROVINCE"])
+                            seller = self._repository_obj.get_seller_id(seller_db_data["NAME"], seller_db_data["PROVINCE"])
                             if seller_db_data["NAME"] is not None:
                                 if len(seller) == 0 or seller is None:
-                                    Repository.insert_json("SELLER", seller_db_data)
+                                    self._repository_obj.insert_json("SELLER", seller_db_data)
                                     new_sellers += 1
-                                    seller = Repository.get_seller_id(seller_db_data["NAME"],
+                                    seller = self._repository_obj.get_seller_id(seller_db_data["NAME"],
                                                                       seller_db_data["PROVINCE"])
                                 announcement_db_data["SELLER_ID"] = seller[0][0]
                             else:
                                 announcement_db_data["SELLER_ID"] = None
 
                             # Insert announcement:
-                            Repository.insert_json("ANNOUNCEMENT", announcement_db_data)
+                            self._repository_obj.insert_json("ANNOUNCEMENT", announcement_db_data)
                             new_announcements += 1
                     except Exception as exception:
                         self._logger.set_message(level="ERROR",
@@ -252,12 +261,12 @@ class DataExtractor:
                 self._logger.set_message(level="INFO",
                                          message_level="COMMENT",
                                          message=f"Saving data on BBDD: {len(self.data_df)} new rows")
-                Repository.insert_df("ANNOUNCEMENTS", self.data_df)
+                self._repository_obj.insert_df("ANNOUNCEMENTS", self.data_df)
 
                 self.data_df = self._set_data_df()
 
 
 if __name__ == "__main__":
-    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1676822428/", logger_level='INFO')
-    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
+    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1676822428/", logger_level='INFO')
+    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", database='mariadb', logger_level='INFO')
     data_extractor.run()

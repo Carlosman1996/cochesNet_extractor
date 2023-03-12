@@ -31,7 +31,7 @@ class CochesNetAPIData:
                 "size": 100
             },
             "sort": {
-                "order": "asc",
+                "order": "desc",
                 "term": "relevance"
             },
             "filters": {
@@ -200,8 +200,7 @@ class CochesNetData:
             "ENVIRONMENTAL_LABEL": self._get_model_value(web_data, ["detail", "ad", "vehicle", "specs", "environmentalLabel"]),
             "SELLER_ID": None, # self._get_model_value(web_data, ["detail", "ad", "id"]),
             "CREATED_DATE": web_data["scraped_date"],
-            "CREATED_USER": "Ordillan",
-            "ANNOUNCEMENT": None
+            "CREATED_USER": "Ordillan"
         }
 
     def map_vehicle_data(self, web_data):

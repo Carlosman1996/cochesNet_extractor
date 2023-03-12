@@ -1,6 +1,8 @@
 from src.utils import ROOT_PATH
 from src.utils import DatabaseOperations
 from src.utils import DataframeOperations
+from datetime import datetime
+import re
 
 
 __author__ = "Carlos Manuel Molina Sotoca"
@@ -54,7 +56,7 @@ class Queries:
             PUBLISHED_DATE numeric,
             ENVIRONMENTAL_LABEL text,
             CREATED_DATE numeric NOT NULL¡
-            CREATED_USER numeric NOT NULL,
+            CREATED_USER text NOT NULL,
             ANNOUNCEMENT blob
         );
     """
@@ -89,7 +91,7 @@ class Queries:
             ENVIRONMENTAL_LABEL text,
             SELLER_ID integer,
             CREATED_DATE numeric NOT NULL,
-            CREATED_USER numeric NOT NULL,
+            CREATED_USER text NOT NULL,
             FOREIGN KEY(VEHICLE_ID) REFERENCES VEHICLE(ID),
             FOREIGN KEY(SELLER_ID) REFERENCES SELLER(ID)
         );
@@ -124,7 +126,7 @@ class Queries:
             ACCELERATION integer,
             MANUFACTURER_PRICE integer,
             CREATED_DATE numeric NOT NULL,
-            CREATED_USER numeric NOT NULL
+            CREATED_USER text NOT NULL
         );
     """
 
@@ -137,7 +139,7 @@ class Queries:
             PROVINCE text,
             ZIP_CODE text,
             CREATED_DATE numeric NOT NULL,
-            CREATED_USER numeric NOT NULL
+            CREATED_USER text NOT NULL
         );
     """
 
@@ -149,12 +151,12 @@ class Queries:
             TITLE VARCHAR(500),
             DESCRIPTION VARCHAR(5000),
             URL VARCHAR(500),
-            OFFER_TYPE VARCHAR(100),
+            OFFER_TYPE VARCHAR(1000),
             VEHICLE_ID INT,
             VEHICLE_KM INT,
             VEHICLE_YEAR INT,
-            STATUS VARCHAR(100),
-            VEHICLE_COLOR VARCHAR(100),
+            STATUS VARCHAR(1000),
+            VEHICLE_COLOR VARCHAR(1000),
             PRICE INT,
             FINANCED_PRICE INT,
             HAS_TAXES BOOLEAN,
@@ -164,14 +166,14 @@ class Queries:
             IS_CERTIFIED BOOLEAN,
             IS_PROFESSIONAL BOOLEAN,
             HAS_URGE BOOLEAN,
-            COUNTRY VARCHAR(100),
-            PROVINCE VARCHAR(100),
+            COUNTRY VARCHAR(1000),
+            PROVINCE VARCHAR(1000),
             AD_CREATION_DATE DATETIME,
             AD_PUBLISHED_DATE DATETIME,
             ENVIRONMENTAL_LABEL VARCHAR(10),
             SELLER_ID INT,
             CREATED_DATE DATETIME NOT NULL,
-            CREATED_USER DATETIME NOT NULL,
+            CREATED_USER VARCHAR(1000) NOT NULL,
             FOREIGN KEY(VEHICLE_ID) REFERENCES VEHICLE(ID),
             FOREIGN KEY(SELLER_ID) REFERENCES SELLER(ID)
         );
@@ -180,7 +182,7 @@ class Queries:
     statisticars_vehicle_table_mariadb_query = """
         CREATE TABLE IF NOT EXISTS VEHICLE (
             ID integer PRIMARY KEY AUTO_INCREMENT,
-            MAKE VARCHAR(100),
+            MAKE VARCHAR(1000),
             MODEL VARCHAR(500),
             VERSION VARCHAR(1000),
             YEAR integer,
@@ -206,7 +208,7 @@ class Queries:
             ACCELERATION INT,
             MANUFACTURER_PRICE INT,
             CREATED_DATE DATETIME NOT NULL,
-            CREATED_USER DATETIME NOT NULL
+            CREATED_USER VARCHAR(1000) NOT NULL
         );
     """
 
@@ -215,11 +217,11 @@ class Queries:
             ID INT PRIMARY KEY AUTO_INCREMENT,
             NAME VARCHAR(500) NOT NULL,
             PAGE_URL VARCHAR(500),
-            COUNTRY VARCHAR(100),
-            PROVINCE VARCHAR(100),
+            COUNTRY VARCHAR(1000),
+            PROVINCE VARCHAR(1000),
             ZIP_CODE VARCHAR(50),
             CREATED_DATE DATETIME NOT NULL,
-            CREATED_USER DATETIME NOT NULL
+            CREATED_USER VARCHAR(1000) NOT NULL
         );
     """
 
@@ -234,7 +236,12 @@ class Queries:
     @staticmethod
     def create_statisticars_insert_row_query(table, data):
         values_str = ""
-        for index, value in enumerate(data.values()):
+        value_index = 0
+        for key, value in data.items():
+            if "DATE" in key:
+                datetime_numbers = [int(number) for number in re.split(r'\D+', value)[:-1]]
+                value = str(datetime(*datetime_numbers))
+
             if value is None:
                 values_str += "NULL"
             elif type(value) == str:
@@ -243,7 +250,8 @@ class Queries:
             else:
                 values_str += f"{value}"
 
-            if len(data.values()) > index + 1:
+            value_index += 1
+            if len(data.values()) > value_index:
                 values_str += ", "
 
         return f"""
@@ -301,6 +309,9 @@ class Queries:
 
 
 class Repository(Queries):
+    def __init__(self, database: str = 'mariadb'):
+        self.database = database
+
     @staticmethod
     def create_announcements_table():
         # Create a bbdd connection
@@ -331,11 +342,12 @@ class Repository(Queries):
         else:
             print("Error! Cannot create the bbdd connection.")
 
-    @staticmethod
-    def insert_json(table, data):
+    def insert_json(self, table, data):
         # Create a bbdd connection
-        conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
-        # conn = DatabaseOperations.create_connection_mariadb()
+        if self.database == 'sqlite':
+            conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
+        else:
+            conn = DatabaseOperations.create_connection_mariadb()
 
         if conn is not None:
             query = Queries.create_statisticars_insert_row_query(table, data)
@@ -343,22 +355,24 @@ class Repository(Queries):
         else:
             print("Error! Cannot create the bbdd connection.")
 
-    @staticmethod
-    def insert_df(table, data_df):
+    def insert_df(self, table, data_df):
         # Create a bbdd connection
-        conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
-        # conn = DatabaseOperations.create_connection_mariadb()
+        if self.database == 'sqlite':
+            conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
+        else:
+            conn = DatabaseOperations.create_connection_mariadb()
 
         if conn is not None:
             DataframeOperations.insert_sql(conn, table, data_df)
         else:
             print("Error! Cannot create the bbdd connection.")
 
-    @staticmethod
-    def read_all_to_df():
+    def read_all_to_df(self, ):
         # Create a bbdd connection
-        conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
-        # conn = DatabaseOperations.create_connection_mariadb()
+        if self.database == 'sqlite':
+            conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
+        else:
+            conn = DatabaseOperations.create_connection_mariadb()
 
         if conn is not None:
             return DataframeOperations.select_sql(conn, Queries.read_statisticars_announcement_table_query)
@@ -366,11 +380,12 @@ class Repository(Queries):
             print("Error! Cannot create the bbdd connection.")
             return None
 
-    @staticmethod
-    def get_announcement_id(announcement_id, announcer):
+    def get_announcement_id(self, announcement_id, announcer):
         # Create a bbdd connection
-        conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
-        # conn = DatabaseOperations.create_connection_mariadb()
+        if self.database == 'sqlite':
+            conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
+        else:
+            conn = DatabaseOperations.create_connection_mariadb()
 
         if conn is not None:
             query = Queries.create_statisticars_select_announcement_id_query(announcement_id, announcer)
@@ -380,11 +395,12 @@ class Repository(Queries):
             print("Error! Cannot create the bbdd connection.")
             return None
 
-    @staticmethod
-    def get_announcement_duplicated(title, vehicle_year, vehicle_km, price, announcer):
+    def get_announcement_duplicated(self, title, vehicle_year, vehicle_km, price, announcer):
         # Create a bbdd connection
-        conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
-        # conn = DatabaseOperations.create_connection_mariadb()
+        if self.database == 'sqlite':
+            conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
+        else:
+            conn = DatabaseOperations.create_connection_mariadb()
 
         if conn is not None:
             query = Queries.create_statisticars_select_announcement_duplicated_query(title,
@@ -398,11 +414,12 @@ class Repository(Queries):
             print("Error! Cannot create the bbdd connection.")
             return None
 
-    @staticmethod
-    def get_vehicle_id(vehicle_make, vehicle_model, vehicle_version, vehicle_year):
+    def get_vehicle_id(self, vehicle_make, vehicle_model, vehicle_version, vehicle_year):
         # Create a bbdd connection
-        conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
-        # conn = DatabaseOperations.create_connection_mariadb()
+        if self.database == 'sqlite':
+            conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
+        else:
+            conn = DatabaseOperations.create_connection_mariadb()
 
         if conn is not None:
             query = Queries.create_statisticars_select_vehicle_id_query(vehicle_make, vehicle_model, vehicle_version, vehicle_year)
@@ -412,11 +429,12 @@ class Repository(Queries):
             print("Error! Cannot create the bbdd connection.")
             return None
 
-    @staticmethod
-    def get_seller_id(seller_name, seller_province):
+    def get_seller_id(self, seller_name, seller_province):
         # Create a bbdd connection
-        conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
-        # conn = DatabaseOperations.create_connection_mariadb()
+        if self.database == 'sqlite':
+            conn = DatabaseOperations.create_connection_sqlite3(Queries.bbdd_path)
+        else:
+            conn = DatabaseOperations.create_connection_mariadb()
 
         if conn is not None:
             query = Queries.create_statisticars_select_seller_id_query(seller_name, seller_province)

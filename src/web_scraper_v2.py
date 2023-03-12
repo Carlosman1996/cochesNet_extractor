@@ -76,9 +76,6 @@ class WebScraper:
         # TODO: implement continuous proxies reading
         # TODO: lock proxies when they are used
         if not self._proxies_finder:
-            self._logger.set_message(level="INFO",
-                                     message_level="SUBSECTION",
-                                     message="Read proxies")
             self._proxies_finder = True
 
             # proxies_finder = ProxiesFinder(anonymity_filter=[1, 2],
@@ -88,10 +85,6 @@ class WebScraper:
             self.proxies = proxies_finder.proxies_list
             self._proxies_df = proxies_finder.proxies_df
             self._proxies_finder = False
-
-            self._logger.set_message(level="INFO",
-                                     message_level="MESSAGE",
-                                     message=f"Number of available proxies: {str(len(self.proxies))}")
         else:
             while not self._proxies_finder:
                 time.sleep(self._proxies_wait_time)
@@ -270,6 +263,7 @@ class WebScraper:
                                                                                  announcement_summary["vehicle_km"],
                                                                                  announcement_summary["price"],
                                                                                  self._page_api.page_name)
+                    # TODO: review available cars with 'asc' sort method in request
                     if len(equal_announcements) == 0 or equal_announcements is None:
                         queue_obj.put(announcement)
 
