@@ -15,6 +15,8 @@ from src.utils import ROOT_PATH
 from src.cochesNet_api import CochesNetData
 from src.cochesNet_api import CochesNetAPI
 from src.repository import Repository
+# from src.adapters.repository import SqlAlchemyRepository as Repository
+
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
