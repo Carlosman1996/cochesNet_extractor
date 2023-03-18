@@ -1,0 +1,12 @@
+application:
+    database: 'sqlite'
+
+database_data:
+    sqlite:
+        file: "/bbdd/STATISTICARS.db"
+    mariadb:
+        user: "ordillan"
+        password: "6065"
+        host: "localhost"
+        port: 3306
+        database: "STATISTICARS"

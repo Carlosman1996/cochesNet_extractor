@@ -7,6 +7,7 @@ from src.adapters.orm import (
     Seller
 )
 from src.utils import ROOT_PATH
+from src.utils import YAMLFileOperations
 from datetime import datetime
 import re
 
@@ -16,20 +17,24 @@ __email__ = "cmmolinas01@gmail.com"
 
 
 class SqlAlchemyRepository:
-    def __init__(self, database: str):
+    def __init__(self):
         super().__init__()
-        self.database = database
+        self.config = YAMLFileOperations.read_file(ROOT_PATH + '/config.yml')
         self.session = self._create_connection()
 
     def _create_connection(self):
+        database_type = self.config["application"]["database"]
+        database_data = self.config["database_data"][database_type]
+
         # Connect to the database using SQLAlchemy
-        if self.database == 'sqlite':
-            database_path = ROOT_PATH + "/bbdd/STATISTICARS.db"
-            engine = create_engine(f"sqlite:///{database_path}")
-        elif self.database == 'mariadb':
-            raise Exception(f'Missing data for database type: {self.database}')
+        if database_type == 'sqlite':
+            engine = create_engine(f"sqlite:///{database_data['file']}")
+        elif database_type == 'mariadb':
+            engine = create_engine(f"mysql+pymysql://"
+                                   f"{database_data['user']}:{database_data['password']}"
+                                   f"@{database_data['host']}:{database_data['port']}/{database_data['database']}")
         else:
-            raise Exception(f'Unknown database type: {self.database}')
+            raise Exception(f'Unknown database type: {database_type}')
 
         Session = sessionmaker()
         Session.configure(bind=engine)

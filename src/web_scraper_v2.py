@@ -12,12 +12,13 @@ import pandas as pd
 from src.logger import Logger
 from src.utils import FileOperations
 from src.utils import ROOT_PATH
+from src.utils import YAMLFileOperations
 from src.utils import JSONFileOperations
 from src.proxies_finder import ProxiesFinder
 from src.postman import Postman
 from src.cochesNet_api import CochesNetAPI
 from src.data_extractor import DataExtractor
-from src.data_extractor import Repository
+from src.adapters.repository import SqlAlchemyRepository as Repository
 
 TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 
@@ -29,8 +30,7 @@ class WebScraper:
                  execution_time: int = None,  # 30 minutes
                  start_page: int = None,
                  end_page: int = None,
-                 logger_level="INFO",
-                 database: str = 'sqlite'):
+                 logger_level="INFO"):
         self._execution_time = execution_time
         self.start_page = start_page
         self.end_page = end_page
@@ -51,7 +51,7 @@ class WebScraper:
         self._page_api = CochesNetAPI()
 
         # TODO: remove - code duplicated in data extractor - NEW REPOSITORY
-        self._repository_obj = Repository(database)
+        self._repository_obj = Repository()
 
         # Timing:
         self.start_time = time.time()
@@ -263,11 +263,11 @@ class WebScraper:
                     announcement_summary = self._page_api.get_announcement_summary(announcement)
 
                     # If announcement is not on database, read the detail:
-                    equal_announcements = self._repository_obj.get_announcement_duplicated(announcement_summary["title"],
-                                                                                           announcement_summary["vehicle_year"],
-                                                                                           announcement_summary["vehicle_km"],
-                                                                                           announcement_summary["price"],
-                                                                                           self._page_api.page_name)
+                    equal_announcements = self._repository_obj.get_announcement_id_by_basic_info(announcement_summary["title"],
+                                                                                                 announcement_summary["vehicle_year"],
+                                                                                                 announcement_summary["vehicle_km"],
+                                                                                                 announcement_summary["price"],
+                                                                                                 self._page_api.page_name)
                     # TODO: review available cars with 'asc' sort method in request
                     if len(equal_announcements) == 0 or equal_announcements is None:
                         queue_obj.put(announcement)
@@ -308,6 +308,7 @@ class WebScraper:
 
                 # Save results on database:
                 data_extractor_obj = DataExtractor(files_directory=self.outputs_folder + f"/page_{str(current_page)}",
+                                                   repository_obj=self._repository_obj,
                                                    logger_level='INFO')
                 data_extractor_obj.run()
 
