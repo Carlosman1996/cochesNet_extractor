@@ -1,24 +1,23 @@
-import multiprocessing
-import threading, queue
+import threading
+import queue
 import time
 from datetime import datetime
 import zoneinfo
 import random
 import os
-from pathlib import Path
 
 import pandas as pd
 
 from src.logger import Logger
 from src.utils import FileOperations
 from src.utils import ROOT_PATH
-from src.utils import YAMLFileOperations
 from src.utils import JSONFileOperations
 from src.proxies_finder import ProxiesFinder
 from src.postman import Postman
 from src.cochesNet_api import CochesNetAPI
 from src.data_extractor import DataExtractor
 from src.adapters.repository import SqlAlchemyRepository as Repository
+from src.cache import Cache
 
 TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 
@@ -30,10 +29,12 @@ class WebScraper:
                  execution_time: int = None,  # 30 minutes
                  start_page: int = None,
                  end_page: int = None,
+                 find_new_proxies: bool = True,
                  logger_level="INFO"):
         self._execution_time = execution_time
         self.start_page = start_page
         self.end_page = end_page
+        self._find_new_proxies = find_new_proxies
         self.proxies = []
         self._proxies_df = pd.DataFrame
         self.outputs_folder = ROOT_PATH + "/outputs/" + str(int(datetime.now().timestamp()))
@@ -50,8 +51,9 @@ class WebScraper:
         # Set web to scrap:
         self._page_api = CochesNetAPI()
 
-        # TODO: remove - code duplicated in data extractor - NEW REPOSITORY
+        # Data persist objects:
         self._repository_obj = Repository()
+        self._cache = Cache()
 
         # Timing:
         self.start_time = time.time()
@@ -86,7 +88,7 @@ class WebScraper:
             # proxies_finder = ProxiesFinder(anonymity_filter=[1, 2],
             #                                codes_filter=["US", "DE", "FR", "ES", "UK"])
             proxies_finder = ProxiesFinder(anonymity_filter=[1, 2])
-            proxies_finder.get_proxies()
+            proxies_finder.get_proxies(find_new_proxies=self._find_new_proxies)
             self.proxies = proxies_finder.proxies_list
             self._proxies_df = proxies_finder.proxies_df
             self._proxies_finder = False
@@ -362,7 +364,7 @@ class WebScraper:
 
 if __name__ == "__main__":
     # web_scraper = WebScraper(execution_time=7200, start_page=0, logger_level='DEBUG')
-    web_scraper = WebScraper(start_page=0, end_page=3000, logger_level='INFO')
+    web_scraper = WebScraper(start_page=0, end_page=3000, find_new_proxies=False, logger_level='INFO')
     web_scraper.run()
 
 """

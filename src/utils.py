@@ -208,10 +208,10 @@ class PickleFileOperations:
             return pickle.load(pickle_obj)
 
     @staticmethod
-    def write_file(file_path, proxies):
+    def write_file(file_path, data):
         DirectoryOperations.create_dir_by_file_path(file_path)
         with open(file_path, 'wb') as pickle_obj:
-            pickle.dump(proxies, pickle_obj)
+            pickle.dump(data, pickle_obj)
             pickle_obj.close()
 
 

@@ -7,7 +7,9 @@ import warnings
 from src.postman import Postman
 import dask.dataframe as dd
 from src.logger import Logger
+from src.utils import ROOT_PATH
 from src.utils import FileOperations
+from src.utils import PickleFileOperations
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -33,6 +35,7 @@ class ProxiesFinder:
         self.freeProxyCz_page = FreeProxyCzPage()
         self.geonode_page = GeonodePage()
         self._logger_level = logger_level
+        self._pkl_file_path = ROOT_PATH + '/temp/proxies.pkl'
 
         self.proxies_df = pd.DataFrame(columns=Common.PROXY_MODEL.keys())
         self.proxies_list = []
@@ -75,12 +78,7 @@ class ProxiesFinder:
                                      message=f"HTTP call to {page} page failed")
         return proxies_df
 
-    # @Timer(text="Proxies found in {:.2f} seconds")
-    def get_proxies(self) -> list:
-        self._logger.set_message(level="INFO",
-                                 message_level="SUBSECTION",
-                                 message="Read proxies")
-
+    def _get_proxies_from_web(self):
         # Initialize parameters:
         proxies_df = self.proxies_df.copy()
 
@@ -115,7 +113,31 @@ class ProxiesFinder:
 
             # Set proxies return variables:
             self.proxies_df = proxies_df[proxies_df["available"] == True].reset_index(drop=True)
-            self.proxies_list = self.proxies_df["proxy"].tolist()
+
+    def _get_proxies_from_pickle(self):
+        try:
+            self.proxies_df = PickleFileOperations.read_file(self._pkl_file_path)
+        except Exception as exception:
+            self._logger.set_message(level="ERROR",
+                                     message_level="COMMENT",
+                                     message=f"There are not saved proxies: {str(exception)}")
+
+    # @Timer(text="Proxies found in {:.2f} seconds")
+    def get_proxies(self, find_new_proxies=True) -> list:
+        self._logger.set_message(level="INFO",
+                                 message_level="SUBSECTION",
+                                 message="Read proxies")
+
+        if find_new_proxies:
+            self._get_proxies_from_web()
+
+            # Save proxies in pickle file:
+            PickleFileOperations.write_file(self._pkl_file_path, self.proxies_df)
+        else:
+            self._get_proxies_from_pickle()
+
+        # Convert dataframe into list:
+        self.proxies_list = self.proxies_df["proxy"].tolist()
 
         self._logger.set_message(level="INFO",
                                  message_level="MESSAGE",
@@ -126,24 +148,4 @@ class ProxiesFinder:
 
 if __name__ == "__main__":
     px_finder_obj = ProxiesFinder(anonymity_filter=[1, 2])
-
-    # EXEC 1:
-    print("\n1 threads")
-    px_finder_obj._max_number_threads = 1
-    result = px_finder_obj.get_proxies()
-    print(result)
-    print(len(result))
-
-    # EXEC 2:
-    print("\n10 threads")
-    px_finder_obj._max_number_threads = 10
-    result = px_finder_obj.get_proxies()
-    print(result)
-    print(len(result))
-
-    # EXEC 3:
-    print("\n20 threads")
-    px_finder_obj._max_number_threads = 20
-    result = px_finder_obj.get_proxies()
-    print(result)
-    print(len(result))
+    result = px_finder_obj.get_proxies(find_new_proxies=False)

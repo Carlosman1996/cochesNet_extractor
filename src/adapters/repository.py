@@ -88,6 +88,20 @@ class SqlAlchemyRepository:
         )
         return result
 
+    def get_announcement_basic_info(self):
+        result = (
+            self.session.query(
+                Announcement.id,
+                Announcement.title,
+                Announcement.vehicle_year,
+                Announcement.vehicle_km,
+                Announcement.price,
+                Announcement.announcer
+            )
+            .all()
+        )
+        return result
+
     def get_announcement_id_by_basic_info(self,
                                           title,
                                           vehicle_year,
@@ -106,6 +120,19 @@ class SqlAlchemyRepository:
                     Announcement.price == price,
                     Announcement.announcer == announcer
                 )
+            )
+            .all()
+        )
+        return result
+
+    def get_vehicle_basic_info(self):
+        result = (
+            self.session.query(
+                Vehicle.id,
+                Vehicle.make,
+                Vehicle.model,
+                Vehicle.version,
+                Vehicle.year
             )
             .all()
         )
@@ -131,6 +158,17 @@ class SqlAlchemyRepository:
             )
             .filter(
                 and_(*_and_query)
+            )
+            .all()
+        )
+        return result
+
+    def get_seller_basic_info(self):
+        result = (
+            self.session.query(
+                Seller.id,
+                Seller.name,
+                Seller.province
             )
             .all()
         )
