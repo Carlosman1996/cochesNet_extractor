@@ -26,6 +26,9 @@ class Cache:
                                                    "name",
                                                    "province"])
 
+        # Set cache:
+        self.set_database_cache()
+
         # Set logger:
         self._logger = Logger(module=FileOperations.get_file_name(__file__, False),
                               level=self._logger_level)
@@ -42,6 +45,19 @@ class Cache:
         # Read sellers:
         sellers_cache = self._repository_obj.get_seller_basic_info()
         self.sellers_cache = pd.DataFrame(sellers_cache, columns=self.sellers_cache.columns)
+
+    def update_database_cache(self,
+                              announcements_data: pd.DataFrame,
+                              vehicles_data: pd.DataFrame,
+                              sellers_data: pd.DataFrame):
+        # Update announcements:
+        self.announcements_cache = pd.concat([self.announcements_cache, announcements_data], ignore_index=True)
+
+        # Update vehicles:
+        self.vehicles_cache = pd.concat([self.vehicles_cache, vehicles_data], ignore_index=True)
+
+        # Update sellers:
+        self.sellers_cache = pd.concat([self.sellers_cache, sellers_data], ignore_index=True)
 
 
 if __name__ == "__main__":

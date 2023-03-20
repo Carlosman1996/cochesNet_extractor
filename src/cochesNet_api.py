@@ -122,6 +122,7 @@ class CochesNetAPI(CochesNetAPIData):
 
     def get_announcement_summary(self, annnouncement: dict) -> dict:
         return {
+            "id": annnouncement["id"],
             "title": annnouncement["title"],
             "vehicle_year": annnouncement["year"],
             "vehicle_km": annnouncement["km"],

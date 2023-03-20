@@ -66,6 +66,7 @@ class ProxiesFinder:
 
     def _read_proxies_page(self, page, proxies_df):
         try:
+            # TODO: refactor - duplicated proxies checker logic must be at this point, not in <page>.get_proxies()
             if page == "freeProxyList":
                 proxies_df = self.freeProxyList_page.get_proxies(proxies_df)
             elif page == "geonode":

@@ -17,7 +17,6 @@ from src.postman import Postman
 from src.cochesNet_api import CochesNetAPI
 from src.data_extractor import DataExtractor
 from src.adapters.repository import SqlAlchemyRepository as Repository
-from src.cache import Cache
 
 TIMEZONE_MADRID = zoneinfo.ZoneInfo("Europe/Madrid")
 
@@ -53,7 +52,10 @@ class WebScraper:
 
         # Data persist objects:
         self._repository_obj = Repository()
-        self._cache = Cache()
+
+        # Set data extractor object:
+        self._data_extractor_obj = DataExtractor(repository_obj=self._repository_obj,
+                                                 logger_level='INFO')
 
         # Timing:
         self.start_time = time.time()
@@ -261,18 +263,8 @@ class WebScraper:
                 queue_obj = queue.Queue()
 
                 # Read ID per announcement:
-                for number, announcement in enumerate(self._page_api.get_announcements(search_response)):
-                    announcement_summary = self._page_api.get_announcement_summary(announcement)
-
-                    # If announcement is not on database, read the detail:
-                    equal_announcements = self._repository_obj.get_announcement_id_by_basic_info(announcement_summary["title"],
-                                                                                                 announcement_summary["vehicle_year"],
-                                                                                                 announcement_summary["vehicle_km"],
-                                                                                                 announcement_summary["price"],
-                                                                                                 self._page_api.page_name)
-                    # TODO: review available cars with 'asc' sort method in request
-                    if len(equal_announcements) == 0 or equal_announcements is None:
-                        queue_obj.put(announcement)
+                announcements = self._data_extractor_obj.process_search_data(search_response)
+                [queue_obj.put(announcement) for announcement in announcements]
 
                 # Select number workers:
                 # num_available_cpus = multiprocessing.cpu_count() - 1
@@ -309,6 +301,7 @@ class WebScraper:
                                                  f"\n\tOnly page details scrapping (seconds): {details_scrap_time}")
 
                 # Save results on database:
+                # TODO: refactor: run method can have specific outputs folder. Remove object declaration
                 data_extractor_obj = DataExtractor(files_directory=self.outputs_folder + f"/page_{str(current_page)}",
                                                    repository_obj=self._repository_obj,
                                                    logger_level='INFO')

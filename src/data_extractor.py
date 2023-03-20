@@ -3,7 +3,6 @@ import zoneinfo
 import copy
 import os
 import warnings
-from pathlib import Path
 
 import pandas as pd
 
@@ -15,6 +14,7 @@ from src.utils import ROOT_PATH
 from src.cochesNet_api import CochesNetData
 from src.cochesNet_api import CochesNetAPI
 from src.adapters.repository import SqlAlchemyRepository as Repository
+from src.cache import Cache
 
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -28,7 +28,7 @@ pd.set_option('display.max_colwidth', None)
 
 class DataExtractor:
     def __init__(self,
-                 files_directory: str,
+                 files_directory: str = ROOT_PATH + "/outputs/**/",
                  repository_obj: Repository = None,
                  logger_level="INFO"):
         self._logger_level = logger_level
@@ -40,6 +40,7 @@ class DataExtractor:
         self._cochesNet_data = CochesNetData()
 
         self._repository_obj = Repository() if repository_obj is None else repository_obj
+        self._cache = Cache()
 
         self.vehicle_main_data = {
             "make": None,
@@ -50,7 +51,6 @@ class DataExtractor:
 
         # Set logger:
         self._logger = Logger(module=FileOperations.get_file_name(__file__, False),
-                              # logs_file_path=self.outputs_folder,
                               level=self._logger_level)
 
     def _set_detail_files_pattern(self, search_page: str):
@@ -64,6 +64,26 @@ class DataExtractor:
         vehicle["version"] = detail_db_data["VERSION"]
         vehicle["year"] = detail_db_data["YEAR"]
         return vehicle
+
+    def process_search_data(self, search_data: dict) -> dict:
+        # Read ID per announcement:
+        ads_summary = []
+        for number, announcement in enumerate(self._page_api.get_announcements(search_data)):
+            ads_summary.append(self._page_api.get_announcement_summary(announcement))
+        ads_summary_df = pd.DataFrame(ads_summary)
+
+        # Remove duplicated data:
+        ads_summary_df = ads_summary_df.drop_duplicates()
+
+        # Check data is in cache (BBDD) or not:
+        check_columns = ["title", "vehicle_year", "vehicle_km", "price"]
+        merge_df = ads_summary_df.merge(self._cache.announcements_cache[check_columns],
+                                        on=check_columns,
+                                        how='left',
+                                        indicator=True)
+        ads_summary_df = merge_df[merge_df['_merge'] == 'left_only'].drop('_merge', axis=1)
+
+        return ads_summary_df.to_dict('records')
 
     @staticmethod
     def _get_file_creation_date(file_path):
