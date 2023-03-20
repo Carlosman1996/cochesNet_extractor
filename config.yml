@@ -1,5 +1,5 @@
 application:
-    database: 'sqlite'
+    database: 'mariadb'
 
 database_data:
     sqlite:

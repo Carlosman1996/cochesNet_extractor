@@ -28,7 +28,7 @@ class SqlAlchemyRepository:
 
         # Connect to the database using SQLAlchemy
         if database_type == 'sqlite':
-            engine = create_engine(f"sqlite:///{database_data['file']}")
+            engine = create_engine(f"sqlite:///{ROOT_PATH + database_data['file']}")
         elif database_type == 'mariadb':
             engine = create_engine(f"mysql+pymysql://"
                                    f"{database_data['user']}:{database_data['password']}"
