@@ -50,12 +50,8 @@ class WebScraper:
         # Set web to scrap:
         self._page_api = CochesNetAPI()
 
-        # Data persist objects:
-        self._repository_obj = Repository()
-
         # Set data extractor object:
-        self._data_extractor_obj = DataExtractor(repository_obj=self._repository_obj,
-                                                 logger_level='INFO')
+        self._data_extractor_obj = DataExtractor(logger_level='INFO')
 
         # Timing:
         self.start_time = time.time()
@@ -223,7 +219,7 @@ class WebScraper:
                                          message_level="MESSAGE",
                                          message=f"Page {current_page}: announcement detail {announcement_id} ERROR.\n"
                                                  f"{str(exception)}")
-                queue_obj.put(announcement)     # Add again to queue
+                queue_obj.put(announcement)  # Add again to queue
                 detail_response = None
 
             if detail_response is not None:
@@ -300,7 +296,6 @@ class WebScraper:
                 # Save results on database:
                 # TODO: refactor: run method can have specific outputs folder. Remove object declaration. Cache must be recalled in each rum
                 data_extractor_obj = DataExtractor(files_directory=self.outputs_folder + f"/page_{str(current_page)}",
-                                                   repository_obj=self._repository_obj,
                                                    logger_level='INFO')
                 data_extractor_obj.run()
 
