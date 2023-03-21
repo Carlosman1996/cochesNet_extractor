@@ -41,6 +41,10 @@ class SqlAlchemyRepository:
         session = Session()
         return session
 
+    def close_connection(self):
+        # TODO: implement close connection method
+        pass
+
     @staticmethod
     def _value_to_str_for_db(value):
         return str(value).replace("'", "''")
@@ -70,6 +74,7 @@ class SqlAlchemyRepository:
             VALUES ({values_str});
         """
         self.session.execute(text(query))
+        self.session.commit()
 
     def get_announcement_id_by_ad_id(self,
                                      ad_id,

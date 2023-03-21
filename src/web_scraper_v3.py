@@ -252,6 +252,7 @@ class WebScraper:
             self._logger.set_message(level="INFO",
                                      message_level="SUBSECTION",
                                      message=f"Read page {current_page} content")
+            pre_search_scrap_time = time.time()
             request_params = self._page_api.get_request_search_by_date_desc(page=current_page)
             search_response = self._get_url_content(request_params=request_params)
 
@@ -278,6 +279,9 @@ class WebScraper:
                 if queue_size < number_workers:
                     number_workers = queue_size
 
+                # Log timing: search page:
+                search_scrap_time = time.time() - pre_search_scrap_time
+
                 # Extract details data:
                 self._logger.set_message(level="INFO",
                                          message_level="COMMENT",
@@ -290,25 +294,29 @@ class WebScraper:
                                      daemon=True).start()
                 queue_obj.join()
 
-                # Log timing stats:
-                page_scrap_time = time.time() - pre_page_scrap_time
+                # Log timing: detail pages:
                 details_scrap_time = time.time() - pre_details_scrap_time
-                self._logger.set_message(level="INFO",
-                                         message_level="COMMENT",
-                                         message=f"Page {current_page}: timing statistics:"
-                                                 f"\n\tTotal announcements: {self._page_scrapped_details}"
-                                                 f"\n\tComplete page scrapping (seconds): {page_scrap_time}"
-                                                 f"\n\tOnly page details scrapping (seconds): {details_scrap_time}")
 
                 # Save results on database:
-                # TODO: refactor: run method can have specific outputs folder. Remove object declaration
+                # TODO: refactor: run method can have specific outputs folder. Remove object declaration. Cache must be recalled in each rum
                 data_extractor_obj = DataExtractor(files_directory=self.outputs_folder + f"/page_{str(current_page)}",
                                                    repository_obj=self._repository_obj,
                                                    logger_level='INFO')
                 data_extractor_obj.run()
 
                 # Increment page number:
+                page_scrap_time = time.time() - pre_page_scrap_time
                 pre_page_scrap_time = time.time()
+
+                # Log timing stats:
+                self._logger.set_message(level="INFO",
+                                         message_level="COMMENT",
+                                         message=f"Page {current_page}: timing statistics:"
+                                                 f"\n\tTotal announcements: {self._page_scrapped_details}"
+                                                 f"\n\tComplete page scrapping (seconds): {page_scrap_time}"
+                                                 f"\n\tOnly page details scrapping (seconds): {details_scrap_time}"
+                                                 f"\n\tOnly search page details scrapping (seconds): {search_scrap_time}")
+
                 current_page += 1
 
             # Finish iterations is elapsed time is greater than maximum execution time:
@@ -357,7 +365,7 @@ class WebScraper:
 
 if __name__ == "__main__":
     # web_scraper = WebScraper(execution_time=7200, start_page=0, logger_level='DEBUG')
-    web_scraper = WebScraper(start_page=0, end_page=3000, find_new_proxies=False, logger_level='INFO')
+    web_scraper = WebScraper(start_page=0, end_page=3000, find_new_proxies=True, logger_level='INFO')
     web_scraper.run()
 
 """
