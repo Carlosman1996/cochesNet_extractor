@@ -65,45 +65,31 @@ class DataExtractor:
         vehicle["year"] = detail_db_data["YEAR"]
         return vehicle
 
-    @staticmethod
-    def _check_unique_entity(data: dict, cache: pd.DataFrame, old_model: bool, ref_columns: list) -> bool:
-        # TODO: chapuza - temporary fix until data models are merged. REMOVE "old_model"
-        data_cleaned = {}
-        for key in ref_columns:
-            data_cleaned[key] = data[key.upper() if old_model else key]     # TODO: chapuza
-        data_df = pd.DataFrame([data_cleaned])
+    def process_search_data(self, search_data: dict) -> dict:
+        # Read ID per announcement:
+        ads_summary = []
+        for number, announcement in enumerate(self._page_api.get_announcements(search_data)):
+            ads_summary.append(self._page_api.get_announcement_summary(announcement))
+        ads_summary_df = pd.DataFrame(ads_summary)
+
+        # Remove duplicated data:
+        ads_summary_df = ads_summary_df.drop_duplicates()
 
         # Check data is in cache (BBDD) or not:
-        merge_df = data_df.merge(cache,
-                                 on=ref_columns,
-                                 how='left',
-                                 indicator=True)
-        data_df = merge_df[merge_df['_merge'] == 'left_only'].drop('_merge', axis=1)
+        check_columns = ["title", "vehicle_year", "vehicle_km", "price"]
+        merge_df = ads_summary_df.merge(self._cache.announcements_cache[check_columns],
+                                        on=check_columns,
+                                        how='left',
+                                        indicator=True)
+        ads_summary_df = merge_df[merge_df['_merge'] == 'left_only'].drop('_merge', axis=1)
 
-        return not data_df.empty
-
-    def check_unique_announcement(self, data: dict, old_model: bool = True) -> bool:
-        return self._check_unique_entity(data=data,
-                                         cache=self._cache.announcements_cache,
-                                         old_model=old_model,
-                                         ref_columns=["title", "vehicle_year", "vehicle_km", "price"])
-
-    def check_unique_vehicle(self, data: dict, old_model: bool = True) -> bool:
-        return self._check_unique_entity(data=data,
-                                         cache=self._cache.vehicles_cache,
-                                         old_model=old_model,
-                                         ref_columns=["make", "model", "version", "year"])
-
-    def check_unique_seller(self, data: dict, old_model: bool = True) -> bool:
-        return self._check_unique_entity(data=data,
-                                         cache=self._cache.sellers_cache,
-                                         old_model=old_model,
-                                         ref_columns=["name", "province"])
+        return ads_summary_df.to_dict('records')
 
     @staticmethod
     def _get_file_creation_date(file_path):
         c_time = os.path.getctime(file_path)
-        return str(datetime.fromtimestamp(c_time).strftime("%Y-%m-%dT%H:%M:%S:%fZ"))
+        # return str(datetime.fromtimestamp(c_time).strftime("%Y-%m-%dT%H:%M:%S:%fZ"))
+        return datetime.fromtimestamp(c_time)
 
     def run(self):
         self._logger.set_message(level="INFO",
@@ -140,6 +126,9 @@ class DataExtractor:
                 search_details_folder = json_search_path.split(".")[0]
                 json_details_paths = DirectoryOperations.find_files_using_pattern(self._set_detail_files_pattern(search_details_folder))
 
+                # TODO: to remove
+                data = []
+
                 # Read detail data:
                 for json_detail_path in json_details_paths:
                     try:
@@ -174,44 +163,66 @@ class DataExtractor:
                         vehicle_db_data = self._cochesNet_data.map_vehicle_data(scrapped_data)
                         seller_db_data = self._cochesNet_data.map_seller_data(scrapped_data)
 
-                        # Check data already exists:
-                        if self.check_unique_announcement(announcement_db_data):
+                        # TODO: to remove
+                        data.append(vehicle_db_data)
 
-                            # Insert vehicle:
-                            if self.check_unique_vehicle(vehicle_db_data):
-                                self._repository_obj.insert_row("VEHICLE", vehicle_db_data)
-                                new_vehicles += 1
-                            vehicle = self._repository_obj.get_vehicle_id_by_basic_info(vehicle_db_data["MAKE"],
-                                                                                        vehicle_db_data["MODEL"],
-                                                                                        vehicle_db_data["VERSION"],
-                                                                                        vehicle_db_data["YEAR"])
-                            announcement_db_data["VEHICLE_ID"] = vehicle[0][0]
 
-                            # Insert seller:
-                            if seller_db_data["NAME"] is not None:
-                                if self.check_unique_seller(seller_db_data):
-                                    self._repository_obj.insert_row("SELLER", seller_db_data)
-                                    new_sellers += 1
-
-                                seller = self._repository_obj.get_seller_id_by_basic_info(seller_db_data["NAME"],
-                                                                                          seller_db_data["PROVINCE"])
-                                announcement_db_data["SELLER_ID"] = seller[0][0]
-                            else:
-                                announcement_db_data["SELLER_ID"] = None
-
-                            # Insert announcement:
-                            self._repository_obj.insert_row("ANNOUNCEMENT", announcement_db_data)
-                            new_announcements += 1
+                        # # # Check data already exists:
+                        # # equal_announcements = self._repository_obj.get_announcement_id(announcement_db_data["ANNOUNCEMENT_ID"],
+                        # #                                                      announcement_db_data["ANNOUNCER"])
+                        # equal_announcements = self._repository_obj.get_announcement_id_by_basic_info(announcement_db_data["TITLE"],
+                        #                                                                              announcement_db_data["VEHICLE_YEAR"],
+                        #                                                                              announcement_db_data["VEHICLE_KM"],
+                        #                                                                              announcement_db_data["PRICE"],
+                        #                                                                              self._page_api.page_name)
+                        # if len(equal_announcements) == 0 or equal_announcements is None:
+                        #     # Insert vehicle:
+                        #     vehicle = self._repository_obj.get_vehicle_id_by_basic_info(vehicle_db_data["MAKE"],
+                        #                                                                 vehicle_db_data["MODEL"],
+                        #                                                                 vehicle_db_data["VERSION"],
+                        #                                                                 vehicle_db_data["YEAR"])
+                        #     if len(vehicle) == 0 or vehicle is None:
+                        #         self._repository_obj.insert_row("VEHICLE", vehicle_db_data)
+                        #         new_vehicles += 1
+                        #         vehicle = self._repository_obj.get_vehicle_id_by_basic_info(vehicle_db_data["MAKE"],
+                        #                                                                     vehicle_db_data["MODEL"],
+                        #                                                                     vehicle_db_data["VERSION"],
+                        #                                                                     vehicle_db_data["YEAR"])
+                        #     announcement_db_data["VEHICLE_ID"] = vehicle[0][0]
+                        #
+                        #     # Insert seller:
+                        #     seller = self._repository_obj.get_seller_id_by_basic_info(seller_db_data["NAME"],
+                        #                                                               seller_db_data["PROVINCE"])
+                        #     if seller_db_data["NAME"] is not None:
+                        #         if len(seller) == 0 or seller is None:
+                        #             self._repository_obj.insert_row("SELLER", seller_db_data)
+                        #             new_sellers += 1
+                        #             seller = self._repository_obj.get_seller_id_by_basic_info(seller_db_data["NAME"],
+                        #                                                                       seller_db_data["PROVINCE"])
+                        #         announcement_db_data["SELLER_ID"] = seller[0][0]
+                        #     else:
+                        #         announcement_db_data["SELLER_ID"] = None
+                        #
+                        #     # Insert announcement:
+                        #     self._repository_obj.insert_row("ANNOUNCEMENT", announcement_db_data)
+                        #     new_announcements += 1
 
                     except Exception as exception:
                         self._logger.set_message(level="ERROR",
                                                  message_level="COMMENT",
                                                  message=f"Exception in detail data processing: {str(exception)}")
+                        assert 0
+
+                    # TODO: to remove
+                    print(data)
+                    self._repository_obj.insert_vehicles(data)
+                    assert 0
 
             except Exception as exception:
                 self._logger.set_message(level="ERROR",
                                          message_level="COMMENT",
                                          message=f"Exception in search data processing: {str(exception)}")
+                assert 0
 
         self._logger.set_message(level="INFO",
                                  message_level="COMMENT",
@@ -224,6 +235,6 @@ class DataExtractor:
 
 
 if __name__ == "__main__":
-    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1679424283/", logger_level='INFO')
-    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
+    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1679299662/", logger_level='INFO')
+    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
     data_extractor.run()

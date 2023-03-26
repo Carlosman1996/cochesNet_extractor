@@ -1,7 +1,9 @@
 import json
 import ast
 from bs4 import BeautifulSoup
+import re
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass
@@ -85,6 +87,7 @@ class CochesNetAPIData:
             }
         }
 
+
 class CochesNetAPI(CochesNetAPIData):
     def __init__(self):
         self.page_name = "coches.net"
@@ -140,6 +143,15 @@ class CochesNetData:
             value = model
             for key in keys:
                 value = value[key]
+
+            # Transform data:
+            if type(value) == str:
+                value = str(value).replace("'", "''")
+            if "date" in keys[-1].lower():
+                datetime_numbers = [int(number) for number in re.split(r'\D+', value)[:-1]]
+                # value = str(datetime(*datetime_numbers))
+                value = datetime(*datetime_numbers)
+
             return value
         except:
             return None

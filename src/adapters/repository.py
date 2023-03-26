@@ -76,6 +76,27 @@ class SqlAlchemyRepository:
         self.session.execute(text(query))
         self.session.commit()
 
+    def _insert_multiple_rows(self, object, data):
+        data_mapping = []
+        for row in data:
+            ad_obj = object
+            for key, value in row.items():
+                print(key.lower(), value, type(value))
+                setattr(ad_obj, key.lower(), value)
+            data_mapping.append(ad_obj)
+
+        result = (
+            self.session.add_all(data_mapping)
+        )
+        self.session.commit()
+        return result
+
+    def insert_vehicles(self, data):
+        vehicle_orm = Vehicle()
+        result = self._insert_multiple_rows(vehicle_orm, data)
+        print(result)
+        return result
+
     def get_announcement_id_by_ad_id(self,
                                      ad_id,
                                      announcer):
@@ -119,7 +140,7 @@ class SqlAlchemyRepository:
             )
             .filter(
                 and_(
-                    Announcement.title == self._value_to_str_for_db(title),
+                    Announcement.title == title,
                     Announcement.vehicle_year == vehicle_year,
                     Announcement.vehicle_km == vehicle_km,
                     Announcement.price == price,
@@ -149,11 +170,11 @@ class SqlAlchemyRepository:
                                      version,
                                      year):
         _and_query = [
-            Vehicle.make == self._value_to_str_for_db(make),
-            Vehicle.model == self._value_to_str_for_db(model)
+            Vehicle.make == make,
+            Vehicle.model == model
         ]
         if version is not None:
-            _and_query += [Vehicle.version == self._value_to_str_for_db(version)]
+            _and_query += [Vehicle.version == version]
         if year is not None:
             _and_query += [Vehicle.year == year]
 
@@ -183,10 +204,10 @@ class SqlAlchemyRepository:
                                     name,
                                     province):
         _and_query = [
-            Seller.name == self._value_to_str_for_db(name)
+            Seller.name == name
         ]
         if province is not None:
-            _and_query += [Seller.province == self._value_to_str_for_db(province)]
+            _and_query += [Seller.province == province]
 
         result = (
             self.session.query(
