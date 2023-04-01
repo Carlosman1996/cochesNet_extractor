@@ -38,11 +38,11 @@ class WebScraper:
         self._proxies_df = pd.DataFrame
         self.outputs_folder = ROOT_PATH + "/outputs/" + str(int(datetime.now().timestamp()))
         self._logger_level = logger_level
-        self._proxies_wait_time = 1
-        self._scrapping_wait_time = 0
+        self._proxies_wait_time = 0.25
+        self._scrapping_wait_time = 0.75
         self._proxies_sleep_time = 300
         self._number_api_retries = 10
-        self._max_number_threads = 10
+        self._max_number_threads = 5
         self._exit = False
         self._proxies_finder = False
         self._page_scrapped_details = 0
@@ -360,7 +360,7 @@ class WebScraper:
 
 if __name__ == "__main__":
     # web_scraper = WebScraper(execution_time=7200, start_page=0, logger_level='DEBUG')
-    web_scraper = WebScraper(start_page=0, end_page=3000, find_new_proxies=True, logger_level='INFO')
+    web_scraper = WebScraper(start_page=0, end_page=3000, find_new_proxies=False, logger_level='INFO')
     web_scraper.run()
 
 """

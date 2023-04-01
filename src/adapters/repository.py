@@ -1,7 +1,9 @@
+import datetime
 from sqlalchemy import and_, create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import asc, desc, func, text
 from src.adapters.orm import (
+    Base,
     Announcement,
     Vehicle,
     Seller
@@ -37,7 +39,7 @@ class SqlAlchemyRepository:
             raise Exception(f'Unknown database type: {database_type}')
 
         Session = sessionmaker()
-        Session.configure(bind=engine)
+        Session.configure(bind=engine, autoflush=True)
         session = Session()
         return session
 
@@ -54,7 +56,7 @@ class SqlAlchemyRepository:
         value_index = 0
         for key, value in data.items():
             if "DATE" in key:
-                datetime_numbers = [int(number) for number in re.split(r'\D+', value)[:-1]]
+                datetime_numbers = [int(number) for number in re.split(r'\D+', str(value))[:-1]]
                 value = str(datetime(*datetime_numbers))
 
             if value is None:
@@ -78,24 +80,30 @@ class SqlAlchemyRepository:
 
     def _insert_multiple_rows(self, object, data):
         data_mapping = []
-        for row in data:
+        # TODO: convert to dataframe:
+        for row in data.to_dict('records'):
             ad_obj = object
             for key, value in row.items():
-                print(key.lower(), value, type(value))
-                setattr(ad_obj, key.lower(), value)
+                setattr(ad_obj, key.lower(), value if value != '' else None)
             data_mapping.append(ad_obj)
 
-        result = (
-            self.session.add_all(data_mapping)
-        )
+        self.session.add_all(data_mapping)
         self.session.commit()
-        return result
+
+        # Return ids:
+        return [data_map_obj.id for data_map_obj in data_mapping]
+
+    def insert_announcements(self, data):
+        entity_orm = Announcement()
+        return self._insert_multiple_rows(entity_orm, data)
 
     def insert_vehicles(self, data):
-        vehicle_orm = Vehicle()
-        result = self._insert_multiple_rows(vehicle_orm, data)
-        print(result)
-        return result
+        entity_orm = Vehicle()
+        return self._insert_multiple_rows(entity_orm, data)
+
+    def insert_sellers(self, data):
+        entity_orm = Seller()
+        return self._insert_multiple_rows(entity_orm, data)
 
     def get_announcement_id_by_ad_id(self,
                                      ad_id,
@@ -219,3 +227,36 @@ class SqlAlchemyRepository:
             .all()
         )
         return result
+
+
+if __name__ == "__main__":
+    obj = SqlAlchemyRepository()
+    announcement = [{'ANNOUNCEMENT_ID': '54367535',
+                    'ANNOUNCER': 'coches.net',
+                    'TITLE': 'KIA Sportage 1.6 CRDi 100kW 136CV Concept 4x2 5p.',
+                    'DESCRIPTION': 'Talleres de las Heras, concesionario oficial KIA en el Corredor del Henares con exposiciones en Alcalá de Henares, Torrejón de Ardoz y Coslada, vende KIA Sportage 1.6 CRDi 136 CV 4x2 DCT Business de ocasión. Un SUV turbodiésel, con cambio automático de doble embrague y consumo contenido. Consulta condiciones. Disponemos de diferentes descuentos para colectivos y empresas, además de ofertas de renting.\r-Precio al contado: 24.900 €.\r-Precio financiado: 23.700 €.\r-Oferta válida salvo error tipográfico.',
+                    'URL': '/kia-sportage-16-crdi-100kw-136cv-concept-4x2-5p-diesel-2019-en-madrid-54367535-covo.aspx',
+                    'OFFER_TYPE': 'Ocasión',
+                    'VEHICLE_ID': 26641,
+                    'VEHICLE_KM': 53787,
+                    'VEHICLE_YEAR': 2019,
+                    'STATUS': 'active',
+                    'VEHICLE_COLOR': 'Gris / Plata (Gris)',
+                    'PRICE': 24900,
+                    'FINANCED_PRICE': 23700,
+                    'HAS_TAXES': True,
+                    'WARRANTY_MONTHS': 36,
+                    'WARRANTY_OFFICIAL': False,
+                    'IS_FINANCED': True,
+                    'IS_CERTIFIED': True,
+                    'IS_PROFESSIONAL': True,
+                    'HAS_URGE': False,
+                    'PROVINCE': 'Madrid',
+                    'AD_CREATION_DATE': datetime.datetime(2023, 2, 17, 12, 20, 23, 1),
+                    'AD_PUBLISHED_DATE': datetime.datetime(2023, 3, 24, 19, 37, 45, 1),
+                    'ENVIRONMENTAL_LABEL': 'C',
+                    'SELLER_ID': 1271,
+                    'CREATED_DATE': datetime.datetime(2023, 3, 25, 9, 59, 36, 524482),
+                    'CREATED_USER': 'Ordillan'}]
+
+    obj.insert_announcements(announcement)

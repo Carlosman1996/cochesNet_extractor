@@ -38,7 +38,7 @@ class WebScraper:
         self._proxies_df = pd.DataFrame
         self.outputs_folder = ROOT_PATH + "/outputs/" + str(int(datetime.now().timestamp()))
         self._logger_level = logger_level
-        self._proxies_wait_time = 1
+        self._proxies_wait_time = 0
         self._scrapping_wait_time = 0
         self._proxies_sleep_time = 300
         self._number_api_retries = 10

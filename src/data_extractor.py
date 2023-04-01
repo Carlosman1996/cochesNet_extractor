@@ -218,6 +218,6 @@ class DataExtractor:
 
 
 if __name__ == "__main__":
-    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1679299662/", logger_level='INFO')
-    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
+    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1680363512/", logger_level='INFO')
+    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
     data_extractor.run()
