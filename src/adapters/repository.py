@@ -88,7 +88,11 @@ class SqlAlchemyRepository:
             data_mapping.append(ad_obj)
 
         self.session.add_all(data_mapping)
-        self.session.commit()
+        try:
+            self.session.commit()
+        except Exception as e:
+            self.session.rollback()
+            print(f"Error en la transacción: {str(e)}")
 
         # Return ids:
         return [data_map_obj.id for data_map_obj in data_mapping]

@@ -47,17 +47,20 @@ class Cache:
         self.sellers_cache = pd.DataFrame(sellers_cache, columns=self.sellers_cache.columns)
 
     def update_database_cache(self,
-                              announcements_data: pd.DataFrame,
-                              vehicles_data: pd.DataFrame,
-                              sellers_data: pd.DataFrame):
+                              announcements_data: pd.DataFrame = None,
+                              vehicles_data: pd.DataFrame = None,
+                              sellers_data: pd.DataFrame = None):
         # Update announcements:
-        self.announcements_cache = pd.concat([self.announcements_cache, announcements_data], ignore_index=True)
+        if announcements_data is not None:
+            self.announcements_cache = pd.concat([self.announcements_cache, announcements_data], ignore_index=True)
 
         # Update vehicles:
-        self.vehicles_cache = pd.concat([self.vehicles_cache, vehicles_data], ignore_index=True)
+        if vehicles_data is not None:
+            self.vehicles_cache = pd.concat([self.vehicles_cache, vehicles_data], ignore_index=True)
 
         # Update sellers:
-        self.sellers_cache = pd.concat([self.sellers_cache, sellers_data], ignore_index=True)
+        if sellers_data is not None:
+            self.sellers_cache = pd.concat([self.sellers_cache, sellers_data], ignore_index=True)
 
 
 if __name__ == "__main__":
