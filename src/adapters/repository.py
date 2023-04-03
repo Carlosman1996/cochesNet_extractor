@@ -1,3 +1,4 @@
+import copy
 import datetime
 from sqlalchemy import and_, create_engine
 from sqlalchemy.orm import sessionmaker
@@ -82,7 +83,7 @@ class SqlAlchemyRepository:
         data_mapping = []
         # TODO: convert to dataframe:
         for row in data.to_dict('records'):
-            ad_obj = object
+            ad_obj = copy.deepcopy(object)
             for key, value in row.items():
                 setattr(ad_obj, key.lower(), value if value != '' else None)
             data_mapping.append(ad_obj)
@@ -90,12 +91,14 @@ class SqlAlchemyRepository:
         self.session.add_all(data_mapping)
         try:
             self.session.commit()
+            new_ids = [data_map_obj.id for data_map_obj in data_mapping]
         except Exception as e:
             self.session.rollback()
+            new_ids = []
             print(f"Error en la transacción: {str(e)}")
 
         # Return ids:
-        return [data_map_obj.id for data_map_obj in data_mapping]
+        return new_ids
 
     def insert_announcements(self, data):
         entity_orm = Announcement()

@@ -15,6 +15,7 @@ from src.cochesNet_api import CochesNetData
 from src.cochesNet_api import CochesNetAPI
 from src.adapters.repository import SqlAlchemyRepository as Repository
 from src.cache import Cache
+import traceback
 
 
 warnings.simplefilter(action='ignore')
@@ -29,10 +30,16 @@ pd.set_option('display.max_colwidth', None)
 class DataExtractor:
     def __init__(self,
                  files_directory: str = ROOT_PATH + "/outputs/**/",
+                 page: int = None,
                  repository_obj: Repository = None,
                  logger_level="INFO"):
         self._logger_level = logger_level
-        self.inputs_folder = files_directory
+        self.page = page
+        if self.page is None:
+            self.inputs_folder = files_directory + "*.json"
+        else:
+            self.inputs_folder = files_directory + f"page_{self.page}.json"
+
         # self.outputs_folder = self.inputs_folder + "/jsons/"
 
         # Set web to scrap:
@@ -82,61 +89,32 @@ class DataExtractor:
         data_df = pd.DataFrame(data_list)
         # TODO: reformat with new data mappings:
         data_df = data_df.rename(columns=str.lower)
-        # Convert NaN into '':
-        return data_df.fillna(value='')
+        data_df = data_df.fillna(value='')
+        return data_df
 
     def get_complete_entity_df(self,
                                cache_df: pd.DataFrame,
                                check_columns: list,
                                data_df: pd.DataFrame) -> pd.DataFrame:
-        # Check data is in cache (BBDD) or not:
-        merge_df = data_df.merge(cache_df,
+        # Check data is in cache (BBDD) or not - remove BBDD duplicates:
+        new_data_df = data_df.copy()
+        merge_df = new_data_df.merge(cache_df.drop_duplicates(keep='first'),
                                  on=check_columns,
                                  how='left',
-                                 indicator=True)
-        data_df["id"] = merge_df["id"]
-        return data_df
-
-
-"""
-TODO: BUGS
-
-2023-04-02 20:58:50,544 : INFO : data_extractor_v2 : 
- ---------- Folder 1679733385: Page: 30 ----------
-
-2023-04-02 20:58:51,444 : INFO : data_extractor_v2 : 
- Data extractor page summary:
-	New announcements: 63
-	New vehicles: 7
-	New sellers: 0
-
-2023-04-02 20:58:51,450 : INFO : data_extractor_v2 : 
- ---------- Folder 1679733385: Page: 36 ----------
-
-Error en la transacción: (pymysql.err.IntegrityError) (1048, "Column 'NAME' cannot be null")
-[SQL: INSERT INTO `SELLER` (name, page_url, country, province, zip_code, created_date, created_user) VALUES (%(name)s, %(page_url)s, %(country)s, %(province)s, %(zip_code)s, %(created_date)s, %(created_user)s)]
-[parameters: {'name': None, 'page_url': None, 'country': None, 'province': None, 'zip_code': None, 'created_date': Timestamp('2023-03-25 10:04:20.864163'), 'created_user': 'Ordillan'}]
-(Background on this error at: http://sqlalche.me/e/gkpj)
-Error en la transacción: (pymysql.err.ProgrammingError) nan can not be used with MySQL
-[SQL: INSERT INTO `ANNOUNCEMENT` (announcement_id, announcer, title, description, url, offer_type, vehicle_id, vehicle_km, vehicle_year, status, vehicle_color, price, financed_price, has_taxes, warranty_months, warranty_official, is_financed, is_certified, is_professional, has_urge, country, province, ad_creation_date, ad_published_date, environmental_label, seller_id, created_date, created_user) VALUES (%(announcement_id)s, %(announcer)s, %(title)s, %(description)s, %(url)s, %(offer_type)s, %(vehicle_id)s, %(vehicle_km)s, %(vehicle_year)s, %(status)s, %(vehicle_color)s, %(price)s, %(financed_price)s, %(has_taxes)s, %(warranty_months)s, %(warranty_official)s, %(is_financed)s, %(is_certified)s, %(is_professional)s, %(has_urge)s, %(country)s, %(province)s, %(ad_creation_date)s, %(ad_published_date)s, %(environmental_label)s, %(seller_id)s, %(created_date)s, %(created_user)s)]
-[parameters: {'announcement_id': '54694534', 'announcer': 'coches.net', 'title': 'VOLKSWAGEN Touran Sport 2.0 TDI 110kW 150CV 5p.', 'description': None, 'url': '/volkswagen-touran-sport-20-tdi-110kw-150cv-diesel-2019-en-valencia-54694534-covo.aspx', 'offer_type': 'Ocasión', 'vehicle_id': nan, 'vehicle_km': 90672, 'vehicle_year': 2019, 'status': 'active', 'vehicle_color': 'Blanco', 'price': 28985, 'financed_price': 26295.0, 'has_taxes': 1, 'warranty_months': 12.0, 'warranty_official': 0, 'is_financed': 1, 'is_certified': 0, 'is_professional': 1, 'has_urge': 0, 'country': None, 'province': 'Valencia', 'ad_creation_date': Timestamp('2023-03-23 20:01:34.000001'), 'ad_published_date': Timestamp('2023-03-24 19:01:46.000001'), 'environmental_label': 'C', 'seller_id': 6185.0, 'created_date': Timestamp('2023-03-25 10:04:22.300183'), 'created_user': 'Ordillan'}]
-(Background on this error at: http://sqlalche.me/e/f405)
-"""
+                                 indicator=False)
+        new_data_df["id"] = merge_df["id"].fillna(value='')
+        return new_data_df
 
     def get_entity_df_to_insert(self, data_df: pd.DataFrame, filter_null_columns: list = []):
         # Remove rows with NONEs in critical columns:
         for filter_null_column in filter_null_columns:
-            data_df = data_df[data_df[filter_null_column].notnull()]
+            data_df = data_df[data_df[filter_null_column] != '']
 
         # Remove duplicated data:
-        data_df = data_df.drop_duplicates()
+        data_df = data_df.drop_duplicates(keep='first')
 
         # Remove rows with ID in BBDD and drop column 'id':
-        data_df = data_df[data_df['id'].isnull()].drop(columns=['id'])
-        return data_df
-
-    def set_complete_entity_df(self, data_df: pd.DataFrame, ids: list):
-        data_df['id'] = data_df['id'].map(lambda data_id: ids.pop(0) if data_id == '' else data_id)
+        data_df = data_df[data_df['id'] == ''].drop(columns=['id'])
         return data_df
 
     def insert_vehicles(self, data_list: list):
@@ -144,18 +122,24 @@ Error en la transacción: (pymysql.err.ProgrammingError) nan can not be used wit
         data_df = self.convert_list_into_df(data_list)
 
         # Extract only new data:
-        data_df = self.get_complete_entity_df(cache_df=self._cache.vehicles_cache,
-                                              check_columns=["make", "model", "version", "year"],
+        check_db_columns = ["make", "model", "version", "year"]
+        new_data_df = self.get_complete_entity_df(cache_df=self._cache.vehicles_cache,
+                                              check_columns=check_db_columns,
                                               data_df=data_df)
-        new_data_df = self.get_entity_df_to_insert(data_df, filter_null_columns=['make', 'model'])
+        new_data_df = self.get_entity_df_to_insert(new_data_df, filter_null_columns=['make', 'model'])
 
         # Insert data:
         if not new_data_df.empty:
             new_db_ids = self._repository_obj.insert_vehicles(new_data_df)
+            new_data_df["id"] = new_db_ids
 
             # Set data into cache:
-            data_df = self.set_complete_entity_df(data_df=data_df, ids=new_db_ids)
-            self._cache.update_database_cache(vehicles_data=data_df)
+            self._cache.update_database_cache(vehicles_data=new_data_df)
+
+            # Update complete dataframe:
+            data_df = self.get_complete_entity_df(cache_df=self._cache.vehicles_cache,
+                                                  check_columns=check_db_columns,
+                                                  data_df=data_df)
         return data_df, len(new_data_df)
 
     def insert_sellers(self, data_list: list):
@@ -163,18 +147,24 @@ Error en la transacción: (pymysql.err.ProgrammingError) nan can not be used wit
         data_df = self.convert_list_into_df(data_list)
 
         # Extract only new data:
-        data_df = self.get_complete_entity_df(cache_df=self._cache.sellers_cache,
-                                              check_columns=["name", "province"],
+        check_db_columns = ["name", "province"]
+        new_data_df = self.get_complete_entity_df(cache_df=self._cache.sellers_cache,
+                                              check_columns=check_db_columns,
                                               data_df=data_df)
-        new_data_df = self.get_entity_df_to_insert(data_df, filter_null_columns=['name'])
+        new_data_df = self.get_entity_df_to_insert(new_data_df, filter_null_columns=['name'])
 
         # Insert data:
         if not new_data_df.empty:
             new_db_ids = self._repository_obj.insert_sellers(new_data_df)
+            new_data_df["id"] = new_db_ids
 
             # Set data into cache:
-            data_df = self.set_complete_entity_df(data_df=data_df, ids=new_db_ids)
-            self._cache.update_database_cache(sellers_data=data_df)
+            self._cache.update_database_cache(sellers_data=new_data_df)
+
+            # Update complete dataframe:
+            data_df = self.get_complete_entity_df(cache_df=self._cache.sellers_cache,
+                                                  check_columns=check_db_columns,
+                                                  data_df=data_df)
         return data_df, len(new_data_df)
 
     def insert_announcements(self, data_list: list, vehicles_ids, sellers_ids):
@@ -184,18 +174,24 @@ Error en la transacción: (pymysql.err.ProgrammingError) nan can not be used wit
         # Extract only new data:
         data_df["vehicle_id"] = vehicles_ids
         data_df["seller_id"] = sellers_ids
-        data_df = self.get_complete_entity_df(cache_df=self._cache.announcements_cache,
-                                              check_columns=["title", "vehicle_year", "vehicle_km", "price", "announcer"],
+        check_db_columns = ["title", "vehicle_year", "vehicle_km", "price", "announcer"]
+        new_data_df = self.get_complete_entity_df(cache_df=self._cache.announcements_cache,
+                                              check_columns=check_db_columns,
                                               data_df=data_df)
-        new_data_df = self.get_entity_df_to_insert(data_df, filter_null_columns=['title'])
+        new_data_df = self.get_entity_df_to_insert(new_data_df, filter_null_columns=['title'])
 
         # Insert data:
         if not new_data_df.empty:
             new_db_ids = self._repository_obj.insert_announcements(new_data_df)
+            new_data_df["id"] = new_db_ids
 
             # Set data into cache:
-            data_df = self.set_complete_entity_df(data_df=data_df, ids=new_db_ids)
-            self._cache.update_database_cache(announcements_data=data_df)
+            self._cache.update_database_cache(announcements_data=new_data_df)
+
+            # Update complete dataframe:
+            data_df = self.get_complete_entity_df(cache_df=self._cache.announcements_cache,
+                                                  check_columns=check_db_columns,
+                                                  data_df=data_df)
         return data_df, len(new_data_df)
 
     @staticmethod
@@ -215,7 +211,7 @@ Error en la transacción: (pymysql.err.ProgrammingError) nan can not be used wit
         new_sellers = 0
 
         # Read pages JSONs:
-        json_searchs_paths = DirectoryOperations.find_files_using_pattern(self.inputs_folder + "*.json")
+        json_searchs_paths = DirectoryOperations.find_files_using_pattern(self.inputs_folder)
 
         # Read search data:
         for json_search_path in json_searchs_paths:
@@ -240,6 +236,7 @@ Error en la transacción: (pymysql.err.ProgrammingError) nan can not be used wit
                 json_details_paths = DirectoryOperations.find_files_using_pattern(self._set_detail_files_pattern(search_details_folder))
 
                 # Read detail data:
+                save_data = True
                 announcements_db_data = []
                 vehicles_db_data = []
                 sellers_db_data = []
@@ -277,22 +274,26 @@ Error en la transacción: (pymysql.err.ProgrammingError) nan can not be used wit
                         sellers_db_data.append(self._cochesNet_data.map_seller_data(scrapped_data))
 
                     except Exception as exception:
+                        save_data = False
                         self._logger.set_message(level="ERROR",
                                                  message_level="COMMENT",
-                                                 message=f"Exception in detail data processing: {str(exception)}")
+                                                 message=f"Exception in detail data processing: {traceback.print_exc()}")
 
-                # Insert data:
-                vehicles_df_db_data, new_page_vehicles = self.insert_vehicles(vehicles_db_data)
-                sellers_df_db_data, new_page_sellers = self.insert_sellers(sellers_db_data)
-                announcements_df_db_data, new_page_announcements = \
-                    self.insert_announcements(data_list=announcements_db_data,
-                                              vehicles_ids=vehicles_df_db_data['id'],
-                                              sellers_ids=sellers_df_db_data['id'])
+                if save_data:
+                    # Insert data:
+                    vehicles_df_db_data, new_page_vehicles = self.insert_vehicles(vehicles_db_data)
+                    print(vehicles_df_db_data)
+                    sellers_df_db_data, new_page_sellers = self.insert_sellers(sellers_db_data)
+                    print(sellers_df_db_data)
+                    announcements_df_db_data, new_page_announcements = \
+                        self.insert_announcements(data_list=announcements_db_data,
+                                                  vehicles_ids=vehicles_df_db_data['id'],
+                                                  sellers_ids=sellers_df_db_data['id'])
 
-                # Update new data counters:
-                new_announcements += new_page_announcements
-                new_vehicles += new_page_vehicles
-                new_sellers += new_page_sellers
+                    # Update new data counters:
+                    new_announcements += new_page_announcements
+                    new_vehicles += new_page_vehicles
+                    new_sellers += new_page_sellers
 
                 self._logger.set_message(level="INFO",
                                          message_level="COMMENT",
@@ -304,7 +305,7 @@ Error en la transacción: (pymysql.err.ProgrammingError) nan can not be used wit
             except Exception as exception:
                 self._logger.set_message(level="ERROR",
                                          message_level="COMMENT",
-                                         message=f"Exception in search data processing: {str(exception)}")
+                                         message=f"Exception in search data processing: {traceback.print_exc()}")
 
         self._logger.set_message(level="INFO",
                                  message_level="COMMENT",
@@ -317,6 +318,6 @@ Error en la transacción: (pymysql.err.ProgrammingError) nan can not be used wit
 
 
 if __name__ == "__main__":
-    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1679733385/", logger_level='INFO')
+    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1679733385/", page=18, logger_level='INFO')
     data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
     data_extractor.run()
