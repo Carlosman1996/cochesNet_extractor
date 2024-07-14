@@ -259,6 +259,11 @@ class DataframeOperations:
     def select_sql(conn, query):
         return pd.read_sql(query, conn)
 
+    @staticmethod
+    def set_printing_options():
+        pd.set_option('display.max_rows', None)
+        pd.set_option('display.max_columns', None)
+
 
 class DatabaseOperations:
 

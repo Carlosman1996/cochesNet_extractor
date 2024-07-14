@@ -28,8 +28,8 @@ class ProxiesFinder:
                  check_proxies: bool = True,
                  logger_level="INFO"):
 
-        self._check_timeout = 2
-        self._check_url = "https://www.coches.net/"
+        self._check_timeout = 5
+        self._check_url = "https://www.google.es/"
         self._max_number_threads = 10
         self.freeProxyList_page = FreeProxyListPage()
         self.freeProxyCz_page = FreeProxyCzPage()
@@ -60,7 +60,9 @@ class ProxiesFinder:
                                  http_proxy=proxy,
                                  timeout=self._check_timeout)
         except Exception as exception:
-            # print(f"Proxy: {proxy} is not available: {str(exception)}\n")
+            self._logger.set_message(level="DEBUG",
+                                     message_level="MESSAGE",
+                                     message=f"Proxy: {proxy} is not available: {str(exception)}\n")
             return False
         return True
 
@@ -87,6 +89,10 @@ class ProxiesFinder:
         proxies_df = self._read_proxies_page("freeProxyList", proxies_df)
         proxies_df = self._read_proxies_page("geonode", proxies_df)
 
+        self._logger.set_message(level="DEBUG",
+                                 message_level="MESSAGE",
+                                 message=f"Number of unchecked proxies found: {str(len(proxies_df))}")
+
         # Filter proxies:
         if self.countries_filter is not None and not proxies_df.empty:
             proxies_df = proxies_df[proxies_df['Country'].isin(self.countries_filter)]
@@ -96,6 +102,10 @@ class ProxiesFinder:
             proxies_df = proxies_df[proxies_df['Anonymity'].isin(self.anonymity_filter)]
         if self.https_filter is not None and not proxies_df.empty:
             proxies_df = proxies_df[proxies_df['Https'] == self.https_filter]
+
+        self._logger.set_message(level="DEBUG",
+                                 message_level="MESSAGE",
+                                 message=f"Number of filtered unchecked proxies found: {str(len(proxies_df))}")
 
         if not proxies_df.empty:
             # Apply max. size filter:
@@ -113,7 +123,9 @@ class ProxiesFinder:
                 proxies_df["available"] = None
 
             # Set proxies return variables:
-            self.proxies_df = proxies_df[proxies_df["available"] == True].reset_index(drop=True)
+            self.proxies_df = proxies_df[
+                (proxies_df["available"] == True) | (proxies_df["available"].isnull())
+            ].reset_index(drop=True)
 
     def _get_proxies_from_pickle(self):
         try:
@@ -148,5 +160,5 @@ class ProxiesFinder:
 
 
 if __name__ == "__main__":
-    px_finder_obj = ProxiesFinder(anonymity_filter=[1, 2])
-    result = px_finder_obj.get_proxies(find_new_proxies=False)
+    px_finder_obj = ProxiesFinder(anonymity_filter=[1, 2], check_proxies=True, logger_level="DEBUG")
+    result = px_finder_obj.get_proxies()

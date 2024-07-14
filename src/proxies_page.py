@@ -6,11 +6,16 @@ from datetime import datetime
 import enum
 from src.postman import Postman
 from src.utils import TIMEZONE_MADRID
+from src.utils import DataframeOperations
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
+
+
+# TODO: refactor and set in general configuration file
+DataframeOperations.set_printing_options()
 
 
 class Anonymity(enum.Enum):
@@ -31,7 +36,7 @@ class Common:
         "Last_Checked": str,
         "created_date": str,
         "created_user": "ordillan",
-        "available": bool
+        "available": True
     }
 
     @staticmethod
@@ -84,7 +89,9 @@ class FreeProxyListPage(Common):
             7: "Last_Checked"
         }
 
-    def get_proxies(self, proxies_df: pd.DataFrame()) -> pd.DataFrame:
+    def get_proxies(self, proxies_df: pd.DataFrame() = None) -> pd.DataFrame:
+        if proxies_df is None:
+            proxies_df = pd.DataFrame(columns=list(self.PROXY_MODEL.keys()))
 
         # Get Free Proxy HTML:
         response = Postman.send_request(method='GET',
@@ -255,3 +262,10 @@ class FreeProxyCzPage(Common):
                 paginator_element.click()
 
         return proxies_df
+
+
+if __name__ == "__main__":
+    proxy_api_obj = FreeProxyListPage()
+    result = proxy_api_obj.get_proxies()
+    print(result)
+

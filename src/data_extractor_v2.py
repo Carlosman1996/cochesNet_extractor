@@ -315,9 +315,3 @@ class DataExtractor:
                                          f"\n\tNew sellers: {new_sellers}")
 
         # TODO: Update cache
-
-
-if __name__ == "__main__":
-    # data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/1679733385/", page=18, logger_level='INFO')
-    data_extractor = DataExtractor(files_directory=ROOT_PATH + "/outputs/**/", logger_level='INFO')
-    data_extractor.run()

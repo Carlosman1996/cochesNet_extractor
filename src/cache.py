@@ -1,3 +1,11 @@
+"""
+cache.py module
+
+Extracts announcements, vehicles and sellers basic data, and it is used in database inserts to avoid duplicates. While
+using this module, performance is improved due to data is in memory, not in database.
+"""
+
+
 import pandas as pd
 from src.logger import Logger
 from src.utils import FileOperations
